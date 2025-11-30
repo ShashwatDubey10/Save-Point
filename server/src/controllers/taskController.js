@@ -1,0 +1,309 @@
+import Task from '../models/Task.js';
+import User from '../models/User.js';
+import asyncHandler from '../utils/asyncHandler.js';
+import gamificationService from '../services/gamificationService.js';
+
+// @desc    Get all tasks for logged in user
+// @route   GET /api/tasks
+// @access  Private
+export const getTasks = asyncHandler(async (req, res) => {
+  const { status, priority, category, startDate, endDate } = req.query;
+
+  const filter = { user: req.user.id };
+
+  if (status) filter.status = status;
+  if (priority) filter.priority = priority;
+  if (category) filter.category = category;
+
+  // Date range filter
+  if (startDate || endDate) {
+    filter.dueDate = {};
+    if (startDate) filter.dueDate.$gte = new Date(startDate);
+    if (endDate) filter.dueDate.$lte = new Date(endDate);
+  }
+
+  const tasks = await Task.find(filter).sort({ dueDate: 1, priority: -1, createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: tasks.length,
+    data: tasks
+  });
+});
+
+// @desc    Get single task
+// @route   GET /api/tasks/:id
+// @access  Private
+export const getTask = asyncHandler(async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: 'Task not found'
+    });
+  }
+
+  // Make sure user owns task
+  if (task.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to access this task'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: task
+  });
+});
+
+// @desc    Create new task
+// @route   POST /api/tasks
+// @access  Private
+export const createTask = asyncHandler(async (req, res) => {
+  req.body.user = req.user.id;
+
+  const task = await Task.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    data: task
+  });
+});
+
+// @desc    Update task
+// @route   PUT /api/tasks/:id
+// @access  Private
+export const updateTask = asyncHandler(async (req, res) => {
+  let task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: 'Task not found'
+    });
+  }
+
+  // Make sure user owns task
+  if (task.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to update this task'
+    });
+  }
+
+  task = await Task.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true
+  });
+
+  res.status(200).json({
+    success: true,
+    data: task
+  });
+});
+
+// @desc    Delete task
+// @route   DELETE /api/tasks/:id
+// @access  Private
+export const deleteTask = asyncHandler(async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: 'Task not found'
+    });
+  }
+
+  // Make sure user owns task
+  if (task.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to delete this task'
+    });
+  }
+
+  await task.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: 'Task deleted successfully'
+  });
+});
+
+// @desc    Toggle task status (todo <-> completed)
+// @route   POST /api/tasks/:id/toggle
+// @access  Private
+export const toggleTaskStatus = asyncHandler(async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: 'Task not found'
+    });
+  }
+
+  // Make sure user owns task
+  if (task.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to update this task'
+    });
+  }
+
+  const wasCompleted = task.status === 'completed';
+  task.toggleStatus();
+  await task.save();
+
+  // Award points if task was just completed
+  if (!wasCompleted && task.status === 'completed') {
+    const user = await User.findById(req.user.id);
+    const points = gamificationService.calculateTaskPoints(task);
+    user.addPoints(points);
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      data: task,
+      points: {
+        earned: points,
+        total: user.gamification.points,
+        level: user.gamification.level
+      }
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: task
+  });
+});
+
+// @desc    Toggle subtask completion
+// @route   POST /api/tasks/:id/subtasks/:subtaskId/toggle
+// @access  Private
+export const toggleSubtask = asyncHandler(async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: 'Task not found'
+    });
+  }
+
+  // Make sure user owns task
+  if (task.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to update this task'
+    });
+  }
+
+  const success = task.toggleSubtask(req.params.subtaskId);
+
+  if (!success) {
+    return res.status(404).json({
+      success: false,
+      message: 'Subtask not found'
+    });
+  }
+
+  await task.save();
+
+  res.status(200).json({
+    success: true,
+    data: task
+  });
+});
+
+// @desc    Get upcoming tasks
+// @route   GET /api/tasks/upcoming/:days
+// @access  Private
+export const getUpcomingTasks = asyncHandler(async (req, res) => {
+  const days = parseInt(req.params.days) || 7;
+
+  const now = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + days);
+
+  const tasks = await Task.find({
+    user: req.user.id,
+    status: { $ne: 'completed' },
+    dueDate: {
+      $gte: now,
+      $lte: futureDate
+    }
+  }).sort({ dueDate: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: tasks.length,
+    data: tasks
+  });
+});
+
+// @desc    Get overdue tasks
+// @route   GET /api/tasks/overdue
+// @access  Private
+export const getOverdueTasks = asyncHandler(async (req, res) => {
+  const now = new Date();
+
+  const tasks = await Task.find({
+    user: req.user.id,
+    status: { $ne: 'completed' },
+    dueDate: { $lt: now }
+  }).sort({ dueDate: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: tasks.length,
+    data: tasks
+  });
+});
+
+// @desc    Get task statistics
+// @route   GET /api/tasks/stats
+// @access  Private
+export const getTaskStats = asyncHandler(async (req, res) => {
+  const tasks = await Task.find({ user: req.user.id });
+
+  const now = new Date();
+
+  const stats = {
+    total: tasks.length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+    inProgress: tasks.filter(t => t.status === 'in-progress').length,
+    todo: tasks.filter(t => t.status === 'todo').length,
+    overdue: tasks.filter(t => t.dueDate && t.dueDate < now && t.status !== 'completed').length,
+    byPriority: {
+      urgent: tasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length,
+      high: tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length,
+      medium: tasks.filter(t => t.priority === 'medium' && t.status !== 'completed').length,
+      low: tasks.filter(t => t.priority === 'low' && t.status !== 'completed').length
+    },
+    byCategory: {}
+  };
+
+  // Group by category
+  tasks.forEach(task => {
+    if (!stats.byCategory[task.category]) {
+      stats.byCategory[task.category] = {
+        total: 0,
+        completed: 0
+      };
+    }
+    stats.byCategory[task.category].total++;
+    if (task.status === 'completed') {
+      stats.byCategory[task.category].completed++;
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    data: stats
+  });
+});
