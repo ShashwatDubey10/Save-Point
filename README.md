@@ -1,393 +1,459 @@
 # 🎮 Save Point - Gamified Habit Tracker
 
-Save Point is a gamified habit tracking application that makes personal growth engaging through game mechanics like points, levels, streaks, and badges.
+> Transform your habits into an engaging RPG experience. Level up your life, one habit at a time.
 
 ![Status](https://img.shields.io/badge/status-MVP%20Complete-success)
 ![Backend](https://img.shields.io/badge/backend-ready-brightgreen)
 ![Frontend](https://img.shields.io/badge/frontend-ready-brightgreen)
+![License](https://img.shields.io/badge/license-ISC-blue)
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Tech Stack](#️-tech-stack)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [API Documentation](#-api-documentation)
+- [Development](#-development)
+- [Deployment](#-deployment)
+- [Troubleshooting](#-troubleshooting)
+- [Roadmap](#️-roadmap)
+
+## 🎯 Overview
+
+Save Point is a gamified habit tracking application that transforms personal growth into an engaging game. Build better habits, complete tasks, earn points, level up, and unlock achievements as you progress on your self-improvement journey.
+
+**Why Save Point?**
+- 🎮 Makes habit building fun through game mechanics
+- 📊 Track progress with detailed analytics
+- 🏆 Unlock achievements and milestones
+- 🔥 Build streaks to stay motivated
+- ⚡ Clean, intuitive interface
+
+## ✨ Features
+
+### 🎯 Core Features
+- **User Authentication** - Secure JWT-based authentication system
+- **Habit Management** - Create, track, and complete daily habits
+- **Task System** - Organize tasks with priorities and due dates
+- **Streak Tracking** - Build consistency with daily streaks
+- **Progress Analytics** - Visualize your growth with statistics
+
+### 🎮 Gamification
+
+**Points System**
+- Complete habits: 10-60 points (based on streak multiplier and category)
+- Complete tasks: 5-30 points (based on priority level)
+- Unlock achievements: Bonus points for milestones
+
+**Level Progression**
+- Unlimited leveling system
+- XP required per level: `(level - 1)² × 100`
+- Visual progress tracking to next level
+
+**Achievements** 🏆
+- 15+ unlockable badges across 5 categories:
+  - Habit Milestones
+  - Streak Champions
+  - Point Achievements
+  - Level Milestones
+  - Special Accomplishments
+
+**Streaks** 🔥
+- Track consecutive completion days
+- Multiple concurrent habit streaks
+- Streak recovery mechanics
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js v18+
-- MongoDB
-- npm or yarn
 
-### Installation
+Ensure you have the following installed:
+- **Node.js** v18 or higher ([Download](https://nodejs.org/))
+- **MongoDB** ([Download](https://www.mongodb.com/try/download/community))
+- **npm** or **yarn**
 
-1. **Clone or navigate to the project:**
-```bash
-cd "D:\Coding Workspace\projects\Save Point"
-```
+### Installation Steps
 
-2. **Backend Setup:**
-```bash
-cd server
-npm install
-npm run seed        # Load achievements
-npm run dev         # Start development server
-```
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd "Save Point"
+   ```
 
-3. **Frontend Setup (in new terminal):**
-```bash
-cd client
-npm install
-npm run dev         # Start development server
-```
+2. **Set up the backend**
+   ```bash
+   cd server
+   npm install
+   cp .env.example .env    # Create environment file
+   npm run seed            # Load achievement data
+   npm run dev             # Start backend server
+   ```
 
-4. **Open browser:**
-```
-http://localhost:5173
-```
+3. **Set up the frontend** (in a new terminal)
+   ```bash
+   cd client
+   npm install
+   npm run dev             # Start frontend server
+   ```
 
-## 📚 Project Structure
+4. **Access the application**
+   
+   Open your browser and navigate to:
+   ```
+   http://localhost:5173
+   ```
 
-```
-Save Point/
-├── client/                    # Frontend (React + Vite)
-│   ├── src/
-│   │   ├── pages/            # Page components
-│   │   ├── components/       # Reusable components
-│   │   ├── services/         # API services
-│   │   ├── context/          # React context
-│   │   └── hooks/            # Custom hooks
-│   └── package.json
-│
-├── server/                    # Backend (Node.js + Express)
-│   ├── src/
-│   │   ├── models/           # MongoDB models
-│   │   ├── controllers/      # Request handlers
-│   │   ├── routes/           # API routes
-│   │   ├── middleware/       # Custom middleware
-│   │   ├── services/         # Business logic
-│   │   └── server.js         # Entry point
-│   ├── .env                  # Environment variables
-│   └── package.json
-│
-└── Documents/                 # Project documentation
-    ├── SavePoint_PRD.md
-    ├── SavePoint_Technical_Architecture.md
-    └── SavePoint_MVP_QuickStart.md
-```
-
-## ✨ Features
-
-### Core Features
-- ✅ **User Authentication** - Secure registration and login with JWT
-- ✅ **Habit Management** - Create, track, and complete daily habits
-- ✅ **Task Management** - Organize tasks with priorities and due dates
-- ✅ **Streak Tracking** - Build consistency with daily streaks
-- ✅ **Points & Levels** - Earn points and level up
-- ✅ **Achievements** - Unlock 15+ badges for accomplishments
-- ✅ **Analytics** - View progress with statistics and insights
-
-### Gamification Mechanics
-
-**Points System:**
-- Complete habits: 10-60 points (based on streak and category)
-- Complete tasks: 5-30 points (based on priority)
-- Unlock achievements: Bonus points
-
-**Level System:**
-- Progress through unlimited levels
-- Formula: `(level - 1)² × 100` points per level
-- Track progress to next level
-
-**Streaks:**
-- Track consecutive days of habit completion
-- Maintain multiple habit streaks simultaneously
-- View current and longest streaks
-
-**Achievements:**
-- 15 default achievements across 5 categories
-- Habits, Streaks, Points, Levels, and Special achievements
-- Earn bonus points for unlocking badges
+**Default Ports:**
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:5000`
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** React 18 with Vite
-- **Routing:** React Router v6
-- **Styling:** Tailwind CSS
-- **State Management:** React Context API
-- **HTTP Client:** Axios
-- **Forms:** Custom form handling
+| Technology | Purpose |
+|------------|---------|
+| React 18 | UI framework |
+| Vite | Build tool & dev server |
+| React Router v6 | Client-side routing |
+| Tailwind CSS | Styling framework |
+| Context API | State management |
+| Axios | HTTP client |
 
 ### Backend
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** MongoDB with Mongoose
-- **Authentication:** JWT (JSON Web Tokens)
-- **Validation:** express-validator
-- **Security:** helmet, cors, bcrypt
+| Technology | Purpose |
+|------------|---------|
+| Node.js | Runtime environment |
+| Express.js | Web framework |
+| MongoDB | Database |
+| Mongoose | ODM for MongoDB |
+| JWT | Authentication |
+| bcrypt | Password hashing |
+| helmet | Security headers |
 
-## 📖 Documentation
+## 📁 Project Structure
 
-### Backend Documentation
-- **[server/README.md](server/README.md)** - Backend overview and API
-- **[server/SETUP_GUIDE.md](server/SETUP_GUIDE.md)** - Quick setup instructions
-- **[server/API_DOCUMENTATION.md](server/API_DOCUMENTATION.md)** - Complete API reference
-- **[BACKEND_SUMMARY.md](BACKEND_SUMMARY.md)** - Implementation summary
+```
+Save Point/
+├── client/                    # React frontend
+│   ├── src/
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/            # Route page components
+│   │   ├── services/         # API integration layer
+│   │   ├── context/          # Global state management
+│   │   ├── hooks/            # Custom React hooks
+│   │   └── App.jsx           # Root component
+│   └── package.json
+│
+├── server/                    # Express backend
+│   ├── src/
+│   │   ├── models/           # Mongoose schemas
+│   │   ├── controllers/      # Route handlers
+│   │   ├── routes/           # API endpoints
+│   │   ├── middleware/       # Custom middleware
+│   │   ├── services/         # Business logic
+│   │   └── server.js         # Application entry
+│   ├── .env                  # Environment variables
+│   └── package.json
+│
+├── Documents/                 # Project documentation
+│   ├── SavePoint_PRD.md
+│   ├── SavePoint_Technical_Architecture.md
+│   └── SavePoint_MVP_QuickStart.md
+│
+└── README.md                  # This file
+```
 
-### Project Documentation
-- **[Documents/SavePoint_PRD.md](Documents/SavePoint_PRD.md)** - Product Requirements
-- **[Documents/SavePoint_Technical_Architecture.md](Documents/SavePoint_Technical_Architecture.md)** - Architecture
-- **[Documents/SavePoint_MVP_QuickStart.md](Documents/SavePoint_MVP_QuickStart.md)** - Development guide
-
-## 🔧 Configuration
+## ⚙️ Configuration
 
 ### Backend Environment Variables
 
-Create `server/.env`:
+Create a `.env` file in the `server/` directory:
+
 ```env
+# Server Configuration
 NODE_ENV=development
 PORT=5000
+
+# Database
 MONGODB_URI=mongodb://localhost:27017/savepoint
-JWT_SECRET=your-super-secret-jwt-key
+
+# Authentication
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRE=7d
+
+# CORS
 CLIENT_URL=http://localhost:5173
 ```
 
+> ⚠️ **Security Note:** Always use strong, unique values for `JWT_SECRET` in production!
+
 ### Frontend Configuration
 
-The frontend is already configured to connect to `http://localhost:5000/api`
+The frontend is preconfigured to connect to `http://localhost:5000/api`. To change this, update the `baseURL` in `client/src/services/api.js`.
 
-## 🧪 Testing
+## 📚 API Documentation
 
-### Backend Testing
-```bash
-cd server
-npm run verify    # Verify setup
-npm run dev       # Start and test manually
-```
+### Authentication Endpoints
 
-### Test Health Endpoint
-```bash
-curl http://localhost:5000/api/health
-```
-
-### Frontend Testing
-```bash
-cd client
-npm run dev       # Start development server
-# Visit http://localhost:5173
-```
-
-## 📝 API Endpoints Overview
-
-### Authentication
-```
+```http
 POST   /api/auth/register     # Register new user
-POST   /api/auth/login        # Login user
-GET    /api/auth/me           # Get current user
+POST   /api/auth/login        # User login
+GET    /api/auth/me           # Get current user profile
 ```
 
-### Habits
-```
-GET    /api/habits            # Get all habits
-POST   /api/habits            # Create habit
-POST   /api/habits/:id/complete    # Complete habit
-GET    /api/habits/stats      # Get statistics
+### Habit Management
+
+```http
+GET    /api/habits            # Get all user habits
+POST   /api/habits            # Create new habit
+PUT    /api/habits/:id        # Update habit
+DELETE /api/habits/:id        # Delete habit
+POST   /api/habits/:id/complete    # Mark habit as complete
+GET    /api/habits/stats      # Get habit statistics
 ```
 
-### Tasks
-```
+### Task Management
+
+```http
 GET    /api/tasks             # Get all tasks
-POST   /api/tasks             # Create task
-POST   /api/tasks/:id/toggle  # Toggle completion
-GET    /api/tasks/stats       # Get statistics
+POST   /api/tasks             # Create new task
+PUT    /api/tasks/:id         # Update task
+DELETE /api/tasks/:id         # Delete task
+POST   /api/tasks/:id/toggle  # Toggle task completion
+GET    /api/tasks/stats       # Get task statistics
 ```
 
 ### Gamification
+
+```http
+GET    /api/gamification/stats         # Get user stats (points, level, etc.)
+GET    /api/gamification/achievements  # Get all achievements
+GET    /api/gamification/badges        # Get user's unlocked badges
 ```
-GET    /api/gamification/stats         # User stats
-GET    /api/gamification/achievements  # All achievements
-GET    /api/gamification/badges        # User badges
+
+### Health Check
+
+```http
+GET    /api/health            # API health status
 ```
 
-See [server/API_DOCUMENTATION.md](server/API_DOCUMENTATION.md) for complete API reference.
+For complete API documentation, see [server/API_DOCUMENTATION.md](server/API_DOCUMENTATION.md).
 
-## 🎯 Development Workflow
+## 💻 Development
 
-1. **Start MongoDB:**
+### Starting Development Servers
+
+1. **Start MongoDB**
    ```bash
    # Windows
    net start MongoDB
-
-   # Mac
+   
+   # macOS
    brew services start mongodb-community
-
+   
    # Linux
    sudo systemctl start mongod
    ```
 
-2. **Start Backend:**
+2. **Start the backend** (Terminal 1)
    ```bash
    cd server
    npm run dev
    ```
 
-3. **Start Frontend:**
+3. **Start the frontend** (Terminal 2)
    ```bash
    cd client
    npm run dev
    ```
 
-4. **Make Changes:**
-   - Both servers auto-reload on file changes
-   - Check terminal for errors and logs
+Both servers support hot-reloading and will automatically restart when you make changes.
 
-## 🐛 Troubleshooting
+### Useful Commands
 
-### MongoDB Connection Issues
-- Verify MongoDB is running
-- Check MONGODB_URI in `.env`
-- Try: `mongosh` to test connection
-
-### Port Already in Use
 ```bash
-# Kill process on port 5000
-npx kill-port 5000
+# Backend
+npm run verify        # Verify setup and dependencies
+npm run seed          # Seed achievements database
+npm run dev           # Start development server
+npm start             # Start production server
 
-# Or change PORT in .env
+# Frontend
+npm run dev           # Start development server
+npm run build         # Build for production
+npm run preview       # Preview production build
+
+# Database
+mongosh               # Open MongoDB shell
 ```
 
-### JWT Authentication Errors
-- Make sure JWT_SECRET is set in `.env`
-- Token may have expired (default 7 days)
-- Re-login to get new token
+### Database Schema
 
-### CORS Errors
-- Verify CLIENT_URL in backend `.env`
-- Check frontend baseURL configuration
-
-## 📊 Database Schema
-
-### Collections
-- **users** - User accounts and gamification data
-- **habits** - Habits with completion tracking
-- **tasks** - Tasks with subtasks and priorities
-- **achievements** - Badge definitions (seeded)
-- **sessions** - Check-in sessions (future feature)
+**Collections:**
+- `users` - User accounts, points, levels, and XP
+- `habits` - Habit definitions and completion history
+- `tasks` - Tasks with subtasks and priority levels
+- `achievements` - Badge definitions (populated via seed)
+- `sessions` - Check-in sessions (planned feature)
 
 ## 🚀 Deployment
 
 ### Backend Deployment
-1. Set production environment variables
-2. Use MongoDB Atlas for database
-3. Deploy to Heroku, Railway, or similar
-4. Set `NODE_ENV=production`
+
+1. **Environment Setup**
+   - Set `NODE_ENV=production`
+   - Use a production MongoDB instance (e.g., MongoDB Atlas)
+   - Generate a strong `JWT_SECRET`
+   - Configure `CLIENT_URL` to your frontend domain
+
+2. **Deployment Platforms**
+   - [Railway](https://railway.app/)
+   - [Render](https://render.com/)
+   - [Heroku](https://heroku.com/)
+   - [DigitalOcean](https://www.digitalocean.com/)
+
+3. **Build & Deploy**
+   ```bash
+   npm install --production
+   npm start
+   ```
 
 ### Frontend Deployment
-1. Update API base URL for production
-2. Build: `npm run build`
-3. Deploy to Vercel, Netlify, or similar
-4. Configure environment variables
+
+1. **Update API Configuration**
+   - Set production API URL in `client/src/services/api.js`
+
+2. **Build**
+   ```bash
+   cd client
+   npm run build
+   ```
+
+3. **Deployment Platforms**
+   - [Vercel](https://vercel.com/) (Recommended)
+   - [Netlify](https://netlify.com/)
+   - [GitHub Pages](https://pages.github.com/)
+
+## 🐛 Troubleshooting
+
+### MongoDB Connection Failed
+
+**Issue:** Cannot connect to MongoDB
+
+**Solutions:**
+- Verify MongoDB is running: `mongosh`
+- Check `MONGODB_URI` in `.env`
+- Ensure MongoDB service is started (see Development section)
+
+### Port Already in Use
+
+**Issue:** `Error: listen EADDRINUSE: address already in use :::5000`
+
+**Solutions:**
+```bash
+# Kill the process using the port
+npx kill-port 5000
+
+# Or change the port in .env
+PORT=5001
+```
+
+### JWT Authentication Errors
+
+**Issue:** "Token expired" or "Invalid token"
+
+**Solutions:**
+- Clear browser localStorage and re-login
+- Verify `JWT_SECRET` is set in `.env`
+- Check token expiration time (default: 7 days)
+
+### CORS Errors
+
+**Issue:** Cross-origin request blocked
+
+**Solutions:**
+- Verify `CLIENT_URL` in backend `.env` matches frontend URL
+- Check frontend API configuration
+- Ensure both servers are running
 
 ## 🔐 Security Features
 
-- Password hashing with bcrypt
-- JWT token authentication
-- Rate limiting (100 req/15min)
-- Input validation and sanitization
-- CORS configuration
-- Helmet.js security headers
-- XSS protection
-
-## 📈 Performance
-
-- Efficient MongoDB queries with indexes
-- Async/await for non-blocking operations
-- Proper error handling
-- Request logging in development
-- Response compression ready
-
-## 🎨 UI/UX Features
-
-- Dark theme optimized design
-- Responsive layout
-- Loading states
-- Error handling
-- Success notifications
-- Intuitive navigation
-- Interactive animations
+- ✅ Password hashing with bcrypt (10 salt rounds)
+- ✅ JWT token authentication
+- ✅ Rate limiting (100 requests per 15 minutes)
+- ✅ Input validation and sanitization
+- ✅ CORS configuration
+- ✅ Helmet.js security headers
+- ✅ XSS protection
+- ✅ MongoDB injection prevention
 
 ## 🗺️ Roadmap
 
-### Phase 1 (MVP) ✅ COMPLETE
-- User authentication
-- Habit management
-- Task management
-- Gamification system
-- Basic analytics
+### ✅ Phase 1 - MVP (Complete)
+- User authentication system
+- Habit tracking & management
+- Task management system
+- Points, levels, and streaks
+- Achievement system
+- Basic analytics dashboard
 
-### Phase 2 (Planned)
-- Journey onboarding
-- Weekly/monthly recaps
-- Timeline visualization
-- Social features
-- Mobile app
-- Email notifications
-- Advanced analytics
+### 🔄 Phase 2 - Enhanced Experience (Planned)
+- [ ] Onboarding journey flow
+- [ ] Weekly/monthly recap emails
+- [ ] Timeline visualization
+- [ ] Habit categories and tags
+- [ ] Dark/light theme toggle
+- [ ] Export data functionality
 
-## 👥 Contributing
+### 🚀 Phase 3 - Advanced Features (Future)
+- [ ] Social features (friends, leaderboards)
+- [ ] Mobile application (React Native)
+- [ ] Push notifications
+- [ ] Advanced analytics & insights
+- [ ] Custom achievement creation
+- [ ] Team/group challenges
 
-1. Create a feature branch
-2. Make your changes
-3. Test thoroughly
-4. Submit a pull request
+## 📖 Additional Documentation
+
+- **[Backend Documentation](server/README.md)** - Backend overview
+- **[API Reference](server/API_DOCUMENTATION.md)** - Complete API docs
+- **[Setup Guide](server/SETUP_GUIDE.md)** - Detailed setup instructions
+- **[PRD](Documents/SavePoint_PRD.md)** - Product requirements
+- **[Technical Architecture](Documents/SavePoint_Technical_Architecture.md)** - System design
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-ISC
+This project is licensed under the ISC License.
 
 ## 🙏 Acknowledgments
 
-Built as an MVP for personal growth and habit tracking with engaging gamification mechanics.
+Built with passion for personal growth and the belief that self-improvement should be engaging, measurable, and fun.
 
-## 📞 Support
+## 📞 Support & Contact
 
-For issues, questions, or contributions:
-- Check documentation in `/server` and `/Documents`
-- Review API documentation for endpoint details
-- Test with the health check endpoint
-
-## ⚡ Quick Commands Reference
-
-```bash
-# Backend
-cd server
-npm install           # Install dependencies
-npm run verify        # Verify setup
-npm run seed          # Seed achievements
-npm run dev           # Start development
-npm start             # Start production
-
-# Frontend
-cd client
-npm install           # Install dependencies
-npm run dev           # Start development
-npm run build         # Build for production
-
-# Database
-mongo                 # Open MongoDB shell
-mongosh               # New MongoDB shell
-```
-
-## 🎉 Success!
-
-Your Save Point application is ready! Start tracking habits, completing tasks, and leveling up your productivity!
-
-**Default Test User:**
-You'll need to register a new user through the UI or API.
-
-**First Steps:**
-1. Register/Login
-2. Create your first habit
-3. Complete it to earn points
-4. Watch your level and streaks grow!
-5. Unlock achievements
+- 📧 Create an issue for bug reports
+- 💡 Feature requests are welcome
+- 📚 Check the documentation before asking questions
 
 ---
 
-Built with ❤️ for personal growth and gamified productivity
+<div align="center">
+
+**Built with ❤️ for personal growth**
+
+[⬆ Back to top](#-save-point---gamified-habit-tracker)
+
+</div>
