@@ -43,6 +43,12 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
       day
     );
 
+    // Check if habit was created after this date
+    const habitCreatedDate = new Date(habit.createdAt);
+    if (habitCreatedDate > targetDate) {
+      return 2; // Not applicable (habit didn't exist yet)
+    }
+
     // Find if there's a completion for this date
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
@@ -52,16 +58,44 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
     return completion ? 1 : 0;
   };
 
-  const getStatusColor = (status, day) => {
+  const getStatusColor = (status, day, habit) => {
+    // Check if habit existed on this day
+    const targetDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      day
+    );
+    const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Check if habit was created after this day (not just same day)
+    if (habitCreatedDate > targetDate) {
+      return 'bg-blue-500/20 cursor-default'; // Not applicable - created after this date
+    }
+
+    // Current day special handling
+    if (isCurrentMonth && day === currentDay) {
+      if (status === 1) {
+        // Completed today - bright green with special glow
+        return 'bg-emerald-400 shadow-emerald-400/60 shadow-lg cursor-pointer hover:scale-110 ring-2 ring-emerald-300';
+      } else {
+        // Not completed yet today - amber/pending color
+        return 'bg-amber-500/50 cursor-pointer hover:scale-110 ring-2 ring-amber-400/50';
+      }
+    }
+
     // Future dates
     if (isCurrentMonth && day > currentDay) {
       return 'bg-dark-700/50 cursor-default';
     }
-    // Completed
+
+    // Completed (past days)
     if (status === 1) {
       return 'bg-emerald-500 shadow-emerald-500/50 shadow-sm cursor-pointer hover:scale-110';
     }
-    // Missed
+
+    // Missed (past days)
     return 'bg-rose-500/70 cursor-pointer hover:scale-110';
   };
 
@@ -78,6 +112,16 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
     habits.forEach(habit => {
       if (!habit.completions) return;
 
+      const habitCreatedDate = new Date(habit.createdAt);
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      // Determine the start day for this habit in the current month
+      let habitStartDay = 1;
+      if (habitCreatedDate > monthStart) {
+        habitStartDay = habitCreatedDate.getDate();
+      }
+
       // Count completions for current month
       const monthCompletions = habit.completions.filter(c => {
         const date = new Date(c.date);
@@ -86,7 +130,11 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
       });
 
       totalCompletions += monthCompletions.length;
-      totalPossible += isCurrentMonth ? currentDay : daysInMonth;
+
+      // Only count days from when habit was created
+      const endDay = isCurrentMonth ? currentDay : daysInMonth;
+      const possibleDays = Math.max(0, endDay - habitStartDay + 1);
+      totalPossible += possibleDays;
 
       // XP calculation (10 XP per completion)
       xpEarned += monthCompletions.length * 10;
@@ -180,7 +228,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-6 mb-6 pb-6 border-b border-white/10">
+        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-emerald-500" />
             <span className="text-sm text-gray-400">Done</span>
@@ -190,8 +238,16 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
             <span className="text-sm text-gray-400">Missed</span>
           </div>
           <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-amber-500/50" />
+            <span className="text-sm text-gray-400">Today (Pending)</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-dark-700/50" />
             <span className="text-sm text-gray-400">Upcoming</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500/20" />
+            <span className="text-sm text-gray-400">Not Created</span>
           </div>
         </div>
 
@@ -200,7 +256,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-sm font-semibold text-gray-300 pb-4 pr-4 min-w-[160px] sticky left-0 bg-dark-800 z-10">
+                <th className="text-left text-sm font-semibold text-gray-300 pb-4 pr-4 min-w-[160px]">
                   Habit
                 </th>
                 {days.map((day) => (
@@ -220,7 +276,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
             <tbody>
               {habits.map((habit, habitIndex) => (
                 <tr key={habit._id || habitIndex} className="group">
-                  <td className="py-2 pr-4 sticky left-0 bg-dark-800 z-10">
+                  <td className="py-2 pr-4">
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{habit.icon || '📌'}</span>
                       <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors truncate max-w-[120px]">
@@ -233,7 +289,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
                     return (
                       <td key={day} className="py-2">
                         <div
-                          className={`w-5 h-5 rounded-md mx-auto transition-all duration-200 ${getStatusColor(status, day)}
+                          className={`w-5 h-5 rounded-md mx-auto transition-all duration-200 ${getStatusColor(status, day, habit)}
                             ${isCurrentMonth && day === currentDay ? 'ring-2 ring-primary-400 ring-offset-2 ring-offset-dark-800' : ''}`}
                           title={`${habit.title || habit.name} - Day ${day}`}
                         />

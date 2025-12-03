@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
 import { analyticsService } from '../services/analyticsService';
+import AppHeader from '../components/AppHeader';
+import AppNavigation from '../components/AppNavigation';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
 
 const DashboardPage = () => {
-  const navigate = useNavigate();
-  const { user, logout, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
   const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,12 +62,13 @@ const DashboardPage = () => {
         await habitService.complete(id);
       }
       // Refresh dashboard data and user info to update XP and level
-      await Promise.all([
-        fetchDashboardData(),
-        refreshUser()
-      ]);
+      await fetchDashboardData();
+      await refreshUser();
     } catch (err) {
       console.error('Failed to toggle habit:', err);
+      // Refresh anyway to ensure UI is in sync
+      await fetchDashboardData();
+      await refreshUser();
     }
   };
 
@@ -125,10 +127,6 @@ const DashboardPage = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
 
   // Check if habit is completed today by looking at the last completion date
   const isCompletedToday = (habit) => {
@@ -168,94 +166,11 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-dark-900">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <Link to="/dashboard" className="flex items-center gap-3 glass px-3 py-2 rounded-xl hover:bg-white/10 transition-all">
-              <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-8" />
-            </Link>
-
-            {/* Center Stats - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-3">
-              {/* Streak Badge */}
-              <div className="flex items-center gap-2 bg-orange-500/20 px-4 py-2 rounded-xl border border-orange-500/30">
-                <span className="text-orange-400 text-lg">🔥</span>
-                <span className="text-sm font-semibold text-white">{user?.gamification?.streak?.current || 0} day streak</span>
-              </div>
-
-              {/* Level Badge */}
-              <div className="flex items-center gap-2 bg-gradient-to-r from-primary-600 to-purple-600 px-4 py-2 rounded-xl">
-                <span className="text-lg">🏆</span>
-                <span className="text-sm font-bold text-white">Level {level}</span>
-              </div>
-
-              {/* XP Progress */}
-              <div className="glass px-4 py-2 rounded-xl min-w-[200px]">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-yellow-400">⭐</span>
-                    <span className="text-sm font-bold text-yellow-400">{pointsInLevel} / {xpForNextLevel} XP</span>
-                  </div>
-                </div>
-                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-500"
-                    style={{ width: `${Math.min(xpProgress, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Side - User Menu */}
-            <div className="flex items-center gap-3">
-              {/* Quick Stats for Mobile */}
-              <div className="lg:hidden flex items-center gap-2 glass px-3 py-2 rounded-xl">
-                <span className="text-yellow-400">⭐</span>
-                <span className="text-sm font-medium text-white">{totalXP}</span>
-              </div>
-
-              {/* User Avatar & Info */}
-              <div className="flex items-center gap-3 glass px-3 py-2 rounded-xl">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm">
-                  {user?.username?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-sm font-medium text-white leading-none mb-1">{user?.username || 'User'}</div>
-                  <div className="text-xs text-gray-400 leading-none">Level {level}</div>
-                </div>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="hidden sm:flex items-center gap-2 glass px-4 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
-                title="Logout"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span className="text-sm">Logout</span>
-              </button>
-
-              {/* Mobile Logout */}
-              <button
-                onClick={handleLogout}
-                className="sm:hidden glass px-3 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
-                title="Logout"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AppHeader />
+      <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -515,28 +430,6 @@ const DashboardPage = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="glass rounded-2xl p-5">
-              <h3 className="text-lg font-bold text-white mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Link to="/habits" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-center">
-                  <div className="text-2xl mb-2">📚</div>
-                  <p className="text-white text-sm font-medium">All Habits</p>
-                </Link>
-                <Link to="/tasks" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-center">
-                  <div className="text-2xl mb-2">📋</div>
-                  <p className="text-white text-sm font-medium">Tasks</p>
-                </Link>
-                <Link to="/calendar" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-center">
-                  <div className="text-2xl mb-2">📅</div>
-                  <p className="text-white text-sm font-medium">Calendar</p>
-                </Link>
-                <Link to="/levels" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-center">
-                  <div className="text-2xl mb-2">🏆</div>
-                  <p className="text-white text-sm font-medium">Levels</p>
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </main>
