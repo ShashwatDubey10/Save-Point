@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import Button from './Button';
+import { useState } from "react";
+import Button from "./Button";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,21 +10,36 @@ const Header = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo - fixed width for balance */}
           <div className="w-52">
-            <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-12 w-12" />
-              <img src="/SavePointText.png" alt="Save Point" className="h-7" />
+            <a
+              href="/"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src="../../public/SavePointHeaderLogo2.png"
+                alt="Save Point"
+                className="h-10"
+              />
             </a>
           </div>
 
           {/* Center nav links */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-300 hover:text-white transition-colors">
+            <a
+              href="#features"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
               Features
             </a>
-            <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors">
+            <a
+              href="#how-it-works"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
               How It Works
             </a>
-            <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+            <a
+              href="#pricing"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
               Pricing
             </a>
           </nav>
@@ -43,11 +58,26 @@ const Header = () => {
             className="md:hidden text-white p-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               {isMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               )}
             </svg>
           </button>
@@ -56,13 +86,22 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-white/10">
             <nav className="flex flex-col space-y-3">
-              <a href="#features" className="text-gray-300 hover:text-white transition-colors py-2">
+              <a
+                href="#features"
+                className="text-gray-300 hover:text-white transition-colors py-2"
+              >
                 Features
               </a>
-              <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors py-2">
+              <a
+                href="#how-it-works"
+                className="text-gray-300 hover:text-white transition-colors py-2"
+              >
                 How It Works
               </a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition-colors py-2">
+              <a
+                href="#pricing"
+                className="text-gray-300 hover:text-white transition-colors py-2"
+              >
                 Pricing
               </a>
               <div className="pt-2 flex flex-col space-y-2">

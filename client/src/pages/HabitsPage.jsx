@@ -188,8 +188,7 @@ const HabitsPage = () => {
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-3 glass px-3 py-2 rounded-xl hover:bg-white/10 transition-all">
-              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-10 w-10" />
-              <img src="/SavePointText.png" alt="Save Point" className="h-6" />
+              <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-8" />
             </Link>
 
             {/* Navigation Links - Hidden on mobile */}

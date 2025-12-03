@@ -5,6 +5,7 @@ import { habitService } from '../services/habitService';
 import { analyticsService } from '../services/analyticsService';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -173,8 +174,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-3 glass px-3 py-2 rounded-xl hover:bg-white/10 transition-all">
-              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-10 w-10" />
-              <img src="/SavePointText.png" alt="Save Point" className="h-6" />
+              <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-8" />
             </Link>
 
             {/* Center Stats - Hidden on mobile */}
@@ -335,6 +335,11 @@ const DashboardPage = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Monthly Habit Tracker */}
+        <div className="mb-8">
+          <MonthlyHabitTracker habits={habits} />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">

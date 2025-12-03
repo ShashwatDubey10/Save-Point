@@ -1,6 +1,15 @@
+import useScrollAnimation from '../hooks/useScrollAnimation';
+
 const CTASection = () => {
+  const [sectionRef, isVisible] = useScrollAnimation({ threshold: 0.1 });
+
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section
+      ref={sectionRef}
+      className={`py-24 relative overflow-hidden transition-all duration-1000 ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+      }`}
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-dark-900" />
 
