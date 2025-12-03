@@ -156,3 +156,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
   transform: scale(1.1);
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
 }
+
+/* Global cursor pointer for interactive elements */
+button,
+a[href],
+[role="button"],
+.cursor-pointer {
+  cursor: pointer;
+}

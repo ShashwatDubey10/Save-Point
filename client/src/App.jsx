@@ -10,6 +10,7 @@ import StreaksPage from './pages/StreaksPage';
 import LevelsPage from './pages/LevelsPage';
 import TasksPage from './pages/TasksPage';
 import CalendarPage from './pages/CalendarPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/levels" element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
   );
 }
