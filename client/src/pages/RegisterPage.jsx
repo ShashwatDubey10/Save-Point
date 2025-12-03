@@ -92,10 +92,11 @@ const RegisterPage = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in-up">
-          <Link to="/">
-            <img src="/SavePointLogo.png" alt="Save Point" className="h-24 mx-auto mb-6" />
+          <Link to="/" className="inline-flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="/SavePointLogoTab.png" alt="Save Point" className="h-20 w-20" />
+            <img src="/SavePointText.png" alt="Save Point" className="h-8" />
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">Create Your Account</h1>
+          <h1 className="text-3xl font-bold text-white mb-2 mt-6">Create Your Account</h1>
           <p className="text-gray-400">Start your journey to better habits today</p>
         </div>
 

@@ -9,9 +9,10 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo - fixed width for balance */}
-          <div className="w-40">
-            <a href="/" className="flex items-center">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-12" />
+          <div className="w-52">
+            <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-12 w-12" />
+              <img src="/SavePointText.png" alt="Save Point" className="h-7" />
             </a>
           </div>
 

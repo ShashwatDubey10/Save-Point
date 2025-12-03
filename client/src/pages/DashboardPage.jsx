@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
+import { analyticsService } from '../services/analyticsService';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
+  const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,18 +21,34 @@ const DashboardPage = () => {
   const [habitToDelete, setHabitToDelete] = useState(null);
 
   useEffect(() => {
-    fetchHabits();
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch both habits and weekly summary
+      const [habitsResponse, weeklyResponse] = await Promise.all([
+        habitService.getAll(),
+        analyticsService.getWeeklySummary()
+      ]);
+
+      setHabits(habitsResponse.data || []);
+      setWeeklyData(weeklyResponse.data);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchHabits = async () => {
     try {
       const data = await habitService.getAll();
-      setHabits(data.habits || []);
+      setHabits(data.data || []);
     } catch (err) {
       setError('Failed to load habits');
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -41,8 +59,11 @@ const DashboardPage = () => {
       } else {
         await habitService.complete(id);
       }
-      // Refresh habits
-      fetchHabits();
+      // Refresh dashboard data and user info to update XP and level
+      await Promise.all([
+        fetchDashboardData(),
+        refreshUser()
+      ]);
     } catch (err) {
       console.error('Failed to toggle habit:', err);
     }
@@ -57,6 +78,7 @@ const DashboardPage = () => {
   // Edit habit
   const handleEditHabit = (habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking edit
+    e.preventDefault(); // Prevent any default behavior
     setEditingHabit(habit);
     setIsHabitModalOpen(true);
   };
@@ -71,7 +93,7 @@ const DashboardPage = () => {
         // Create new habit
         await habitService.create(habitData);
       }
-      fetchHabits();
+      await fetchDashboardData();
       setIsHabitModalOpen(false);
       setEditingHabit(null);
     } catch (err) {
@@ -83,6 +105,7 @@ const DashboardPage = () => {
   // Delete habit
   const handleDeleteClick = (habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking delete
+    e.preventDefault(); // Prevent any default behavior
     setHabitToDelete(habit);
     setIsDeleteModalOpen(true);
   };
@@ -92,7 +115,8 @@ const DashboardPage = () => {
 
     try {
       await habitService.delete(habitToDelete._id);
-      fetchHabits();
+      await fetchDashboardData();
+      setIsDeleteModalOpen(false);
       setHabitToDelete(null);
     } catch (err) {
       console.error('Failed to delete habit:', err);
@@ -105,14 +129,26 @@ const DashboardPage = () => {
     navigate('/');
   };
 
-  const completedCount = habits.filter(h => h.completedToday).length;
-  const totalXP = user?.gamification?.totalXP || 0;
-  const level = user?.gamification?.level || 1;
-  const xpForNextLevel = level * 100;
-  const xpProgress = (totalXP % xpForNextLevel) / xpForNextLevel * 100;
+  // Check if habit is completed today by looking at the last completion date
+  const isCompletedToday = (habit) => {
+    if (!habit.completions || habit.completions.length === 0) return false;
+    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+    const today = new Date();
+    return lastCompletion.toDateString() === today.toDateString();
+  };
 
+  const completedCount = habits.filter(h => isCompletedToday(h)).length;
+  const totalXP = user?.gamification?.points || 0;
+  const level = user?.gamification?.level || 1;
+  const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
+  const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
+  const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
+
+  // Get weekly progress from analytics data
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekProgress = [85, 100, 70, 90, 100, 60, 0]; // TODO: Calculate from real data
+  const weekProgress = weeklyData?.habits?.dailyBreakdown
+    ? weeklyData.habits.dailyBreakdown.map(day => day.completionRate)
+    : [0, 0, 0, 0, 0, 0, 0];
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -135,8 +171,9 @@ const DashboardPage = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-10" />
+            <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-10 w-10" />
+              <img src="/SavePointText.png" alt="Save Point" className="h-6" />
             </Link>
 
             <div className="flex items-center gap-6">
@@ -203,7 +240,7 @@ const DashboardPage = () => {
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-2">{xpForNextLevel - (totalXP % xpForNextLevel)} XP to next level</p>
+            <p className="text-xs text-gray-500 mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP to next level</p>
           </Link>
 
           {/* Streak Card */}
@@ -285,17 +322,17 @@ const DashboardPage = () => {
                   <div
                     key={habit._id}
                     className={`glass rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer hover:bg-white/10 ${
-                      habit.completedToday ? 'border-green-500/30' : ''
+                      isCompletedToday(habit) ? 'border-green-500/30' : ''
                     }`}
-                    onClick={() => toggleHabit(habit._id, habit.completedToday)}
+                    onClick={() => toggleHabit(habit._id, isCompletedToday(habit))}
                   >
                     {/* Checkbox */}
                     <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      habit.completedToday
+                      isCompletedToday(habit)
                         ? 'bg-green-500 border-green-500'
                         : 'border-white/30 hover:border-primary-500'
                     }`}>
-                      {habit.completedToday && (
+                      {isCompletedToday(habit) && (
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
@@ -310,22 +347,22 @@ const DashboardPage = () => {
                     {/* Info */}
                     <div className="flex-1">
                       <h3 className={`font-medium transition-all ${
-                        habit.completedToday ? 'text-gray-400 line-through' : 'text-white'
+                        isCompletedToday(habit) ? 'text-gray-400 line-through' : 'text-white'
                       }`}>
-                        {habit.name}
+                        {habit.title || habit.name}
                       </h3>
-                      <p className="text-sm text-gray-500">{habit.category}</p>
+                      <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
                     </div>
 
                     {/* Streak */}
                     <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
                       <span className="text-orange-400">🔥</span>
-                      <span className="text-white font-medium">{habit.streak?.current || 0}</span>
+                      <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
                     </div>
 
                     {/* XP */}
                     <div className="text-primary-400 font-medium">
-                      +{habit.xpReward || 10} XP
+                      +10 XP
                     </div>
 
                     {/* Actions */}
@@ -464,7 +501,7 @@ const DashboardPage = () => {
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Habit?"
-        message={`Are you sure you want to delete "${habitToDelete?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${habitToDelete?.title || habitToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}

@@ -32,7 +32,7 @@ const TasksPage = () => {
       if (filterPriority !== 'all') filters.priority = filterPriority;
 
       const data = await taskService.getAll(filters);
-      setTasks(data.tasks || []);
+      setTasks(data || []);
     } catch (err) {
       setError('Failed to load tasks');
       console.error(err);
@@ -48,6 +48,7 @@ const TasksPage = () => {
 
   const handleEditTask = (task, e) => {
     e.stopPropagation();
+    e.preventDefault();
     setEditingTask(task);
     setIsTaskModalOpen(true);
   };
@@ -70,6 +71,7 @@ const TasksPage = () => {
 
   const handleDeleteClick = (task, e) => {
     e.stopPropagation();
+    e.preventDefault();
     setTaskToDelete(task);
     setIsDeleteModalOpen(true);
   };
@@ -80,6 +82,7 @@ const TasksPage = () => {
     try {
       await taskService.delete(taskToDelete._id);
       fetchTasks();
+      setIsDeleteModalOpen(false);
       setTaskToDelete(null);
     } catch (err) {
       console.error('Failed to delete task:', err);
@@ -103,8 +106,8 @@ const TasksPage = () => {
 
   // Group tasks by status for board view
   const tasksByStatus = {
-    pending: tasks.filter(t => t.status === 'pending'),
-    in_progress: tasks.filter(t => t.status === 'in_progress'),
+    todo: tasks.filter(t => t.status === 'todo'),
+    'in-progress': tasks.filter(t => t.status === 'in-progress'),
     completed: tasks.filter(t => t.status === 'completed'),
   };
 
@@ -130,16 +133,16 @@ const TasksPage = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'border-gray-500/30',
-      in_progress: 'border-primary-500/30',
-      completed: 'border-green-500/30',
-      cancelled: 'border-red-500/30',
+      'todo': 'border-gray-500/30',
+      'in-progress': 'border-primary-500/30',
+      'completed': 'border-green-500/30',
     };
-    return colors[status] || colors.pending;
+    return colors[status] || colors.todo;
   };
 
-  const formatDeadline = (deadline) => {
-    const date = new Date(deadline);
+  const formatDeadline = (dueDate) => {
+    if (!dueDate) return { text: 'No deadline', color: 'text-gray-500' };
+    const date = new Date(dueDate);
     const now = new Date();
     const diffTime = date - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -160,8 +163,8 @@ const TasksPage = () => {
   }
 
   const TaskCard = ({ task }) => {
-    const deadline = formatDeadline(task.deadline);
-    const isOverdue = task.status !== 'completed' && new Date(task.deadline) < new Date();
+    const deadline = formatDeadline(task.dueDate);
+    const isOverdue = task.status !== 'completed' && task.dueDate && new Date(task.dueDate) < new Date();
 
     return (
       <div
@@ -261,8 +264,9 @@ const TasksPage = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/dashboard" className="flex items-center">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-10" />
+            <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <img src="/SavePointLogoTab.png" alt="Save Point" className="h-10 w-10" />
+              <img src="/SavePointText.png" alt="Save Point" className="h-6" />
             </Link>
 
             <div className="flex items-center gap-6">
@@ -340,10 +344,10 @@ const TasksPage = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="all" className="bg-dark-800">All Status</option>
+              <option value="todo" className="bg-dark-800">To Do</option>
+              <option value="in-progress" className="bg-dark-800">In Progress</option>
+              <option value="completed" className="bg-dark-800">Completed</option>
             </select>
 
             {/* Priority Filter */}
@@ -352,11 +356,11 @@ const TasksPage = () => {
               onChange={(e) => setFilterPriority(e.target.value)}
               className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
             >
-              <option value="all">All Priorities</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all" className="bg-dark-800">All Priorities</option>
+              <option value="urgent" className="bg-dark-800">Urgent</option>
+              <option value="high" className="bg-dark-800">High</option>
+              <option value="medium" className="bg-dark-800">Medium</option>
+              <option value="low" className="bg-dark-800">Low</option>
             </select>
           </div>
 
@@ -394,17 +398,17 @@ const TasksPage = () => {
         ) : (
           /* Board View */
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Pending Column */}
+            {/* To Do Column */}
             <div className="glass rounded-2xl p-5">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <span className="text-2xl">📝</span>
-                Pending ({tasksByStatus.pending.length})
+                To Do ({tasksByStatus.todo.length})
               </h2>
               <div className="space-y-3">
-                {tasksByStatus.pending.map((task) => (
+                {tasksByStatus.todo.map((task) => (
                   <TaskCard key={task._id} task={task} />
                 ))}
-                {tasksByStatus.pending.length === 0 && (
+                {tasksByStatus.todo.length === 0 && (
                   <p className="text-center text-gray-500 text-sm py-8">No pending tasks</p>
                 )}
               </div>
@@ -414,13 +418,13 @@ const TasksPage = () => {
             <div className="glass rounded-2xl p-5">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <span className="text-2xl">⚡</span>
-                In Progress ({tasksByStatus.in_progress.length})
+                In Progress ({tasksByStatus['in-progress'].length})
               </h2>
               <div className="space-y-3">
-                {tasksByStatus.in_progress.map((task) => (
+                {tasksByStatus['in-progress'].map((task) => (
                   <TaskCard key={task._id} task={task} />
                 ))}
-                {tasksByStatus.in_progress.length === 0 && (
+                {tasksByStatus['in-progress'].length === 0 && (
                   <p className="text-center text-gray-500 text-sm py-8">No tasks in progress</p>
                 )}
               </div>

@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 
-const CATEGORIES = ['Health', 'Productivity', 'Learning', 'Social', 'Other'];
+const CATEGORIES = [
+  { value: 'health', label: 'Health' },
+  { value: 'fitness', label: 'Fitness' },
+  { value: 'productivity', label: 'Productivity' },
+  { value: 'mindfulness', label: 'Mindfulness' },
+  { value: 'learning', label: 'Learning' },
+  { value: 'social', label: 'Social' },
+  { value: 'creative', label: 'Creative' },
+  { value: 'other', label: 'Other' }
+];
 const ICONS = ['🎯', '💪', '📚', '🏃', '🧘', '💻', '🎨', '🎵', '🍎', '💧', '😴', '🌟'];
 
 const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    title: '',
     description: '',
-    category: 'Health',
+    category: 'health',
     icon: '🎯',
-    difficulty: 3,
-    frequency: { type: 'daily' },
+    frequency: 'daily',
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,22 +27,20 @@ const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
   useEffect(() => {
     if (habit) {
       setFormData({
-        name: habit.name || '',
+        title: habit.title || habit.name || '',
         description: habit.description || '',
-        category: habit.category || 'Health',
+        category: habit.category?.toLowerCase() || 'health',
         icon: habit.icon || '🎯',
-        difficulty: habit.difficulty || 3,
-        frequency: habit.frequency || { type: 'daily' },
+        frequency: habit.frequency || 'daily',
       });
     } else {
       // Reset form for new habit
       setFormData({
-        name: '',
+        title: '',
         description: '',
-        category: 'Health',
+        category: 'health',
         icon: '🎯',
-        difficulty: 3,
-        frequency: { type: 'daily' },
+        frequency: 'daily',
       });
     }
     setErrors({});
@@ -52,16 +58,16 @@ const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Habit name is required';
-    } else if (formData.name.trim().length < 3) {
-      newErrors.name = 'Habit name must be at least 3 characters';
-    } else if (formData.name.trim().length > 50) {
-      newErrors.name = 'Habit name cannot exceed 50 characters';
+    if (!formData.title.trim()) {
+      newErrors.title = 'Habit title is required';
+    } else if (formData.title.trim().length < 3) {
+      newErrors.title = 'Habit title must be at least 3 characters';
+    } else if (formData.title.trim().length > 100) {
+      newErrors.title = 'Habit title cannot exceed 100 characters';
     }
 
-    if (formData.description && formData.description.length > 200) {
-      newErrors.description = 'Description cannot exceed 200 characters';
+    if (formData.description && formData.description.length > 500) {
+      newErrors.description = 'Description cannot exceed 500 characters';
     }
 
     setErrors(newErrors);
@@ -107,21 +113,21 @@ const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Name */}
+          {/* Title */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
-              Habit Name <span className="text-red-400">*</span>
+              Habit Title <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="title"
+              value={formData.title}
               onChange={handleChange}
               placeholder="e.g., Morning workout"
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
             />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-400">{errors.name}</p>
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-400">{errors.title}</p>
             )}
           </div>
 
@@ -157,8 +163,8 @@ const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 transition-colors"
               >
                 {CATEGORIES.map(cat => (
-                  <option key={cat} value={cat} className="bg-dark-800">
-                    {cat}
+                  <option key={cat.value} value={cat.value} className="bg-dark-800">
+                    {cat.label}
                   </option>
                 ))}
               </select>
@@ -188,25 +194,6 @@ const HabitModal = ({ isOpen, onClose, onSave, habit = null }) => {
             </div>
           </div>
 
-          {/* Difficulty */}
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Difficulty Level: {formData.difficulty}
-            </label>
-            <input
-              type="range"
-              name="difficulty"
-              min="1"
-              max="5"
-              value={formData.difficulty}
-              onChange={handleChange}
-              className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Easy</span>
-              <span>Hard</span>
-            </div>
-          </div>
 
           {/* Submit Error */}
           {errors.submit && (
