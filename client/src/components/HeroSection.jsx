@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import Button from './Button';
 
 // Pre-generated particle positions for consistent renders
@@ -25,6 +26,17 @@ const PARTICLES = [
 ];
 
 const HeroSection = () => {
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollIndicator(window.scrollY < 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated background orbs */}
@@ -119,14 +131,16 @@ const HeroSection = () => {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
-        <a href="#showcase" className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
-          <span className="text-xs uppercase tracking-widest">Scroll</span>
-          <div className="w-6 h-10 border-2 border-current rounded-full flex justify-center pt-2">
-            <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" />
-          </div>
-        </a>
-      </div>
+      {showScrollIndicator && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 transition-opacity duration-500">
+          <a href="#showcase" className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
+            <span className="text-xs uppercase tracking-widest">Scroll</span>
+            <div className="w-6 h-10 border-2 border-current rounded-full flex justify-center pt-2">
+              <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" />
+            </div>
+          </a>
+        </div>
+      )}
     </section>
   );
 };

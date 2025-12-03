@@ -4,13 +4,11 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    status: 'pending',
+    status: 'todo',
     priority: 'medium',
-    category: '',
-    deadline: '',
-    reminderTime: '',
-    estimatedDuration: '',
-    notes: '',
+    category: 'other',
+    dueDate: '',
+    estimatedTime: '',
     subtasks: [],
   });
   const [newSubtask, setNewSubtask] = useState('');
@@ -22,26 +20,22 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
       setFormData({
         title: task.title || '',
         description: task.description || '',
-        status: task.status || 'pending',
+        status: task.status || 'todo',
         priority: task.priority || 'medium',
-        category: task.category || '',
-        deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '',
-        reminderTime: task.reminderTime ? new Date(task.reminderTime).toISOString().slice(0, 16) : '',
-        estimatedDuration: task.estimatedDuration || '',
-        notes: task.notes || '',
+        category: task.category || 'other',
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
+        estimatedTime: task.estimatedTime || '',
         subtasks: task.subtasks || [],
       });
     } else {
       setFormData({
         title: '',
         description: '',
-        status: 'pending',
+        status: 'todo',
         priority: 'medium',
-        category: '',
-        deadline: '',
-        reminderTime: '',
-        estimatedDuration: '',
-        notes: '',
+        category: 'other',
+        dueDate: '',
+        estimatedTime: '',
         subtasks: [],
       });
     }
@@ -80,8 +74,8 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
       return;
     }
 
-    if (!formData.deadline) {
-      setError('Deadline is required');
+    if (!formData.dueDate) {
+      setError('Due date is required');
       return;
     }
 
@@ -198,30 +192,35 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
                 <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
                   Category
                 </label>
-                <input
-                  type="text"
+                <select
                   id="category"
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  placeholder="e.g., Work, Personal"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
                   disabled={loading}
-                />
+                >
+                  <option value="work" className="bg-dark-800">Work</option>
+                  <option value="personal" className="bg-dark-800">Personal</option>
+                  <option value="health" className="bg-dark-800">Health</option>
+                  <option value="learning" className="bg-dark-800">Learning</option>
+                  <option value="shopping" className="bg-dark-800">Shopping</option>
+                  <option value="other" className="bg-dark-800">Other</option>
+                </select>
               </div>
             </div>
 
-            {/* Deadline and Reminder */}
+            {/* Due Date and Estimated Time */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="deadline" className="block text-sm font-medium text-gray-300 mb-2">
-                  Deadline *
+                <label htmlFor="dueDate" className="block text-sm font-medium text-gray-300 mb-2">
+                  Due Date *
                 </label>
                 <input
                   type="datetime-local"
-                  id="deadline"
-                  name="deadline"
-                  value={formData.deadline}
+                  id="dueDate"
+                  name="dueDate"
+                  value={formData.dueDate}
                   onChange={handleChange}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
                   required
@@ -230,37 +229,21 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
               </div>
 
               <div>
-                <label htmlFor="reminderTime" className="block text-sm font-medium text-gray-300 mb-2">
-                  Reminder
+                <label htmlFor="estimatedTime" className="block text-sm font-medium text-gray-300 mb-2">
+                  Estimated Time (minutes)
                 </label>
                 <input
-                  type="datetime-local"
-                  id="reminderTime"
-                  name="reminderTime"
-                  value={formData.reminderTime}
+                  type="number"
+                  id="estimatedTime"
+                  name="estimatedTime"
+                  value={formData.estimatedTime}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                  placeholder="e.g., 60"
+                  min="0"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
                   disabled={loading}
                 />
               </div>
-            </div>
-
-            {/* Estimated Duration */}
-            <div>
-              <label htmlFor="estimatedDuration" className="block text-sm font-medium text-gray-300 mb-2">
-                Estimated Duration (minutes)
-              </label>
-              <input
-                type="number"
-                id="estimatedDuration"
-                name="estimatedDuration"
-                value={formData.estimatedDuration}
-                onChange={handleChange}
-                placeholder="e.g., 60"
-                min="0"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
-                disabled={loading}
-              />
             </div>
 
             {/* Subtasks */}
@@ -304,23 +287,6 @@ const TaskModal = ({ isOpen, onClose, onSave, task }) => {
                   Add
                 </button>
               </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-2">
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                placeholder="Add any additional notes..."
-                rows={3}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all resize-none"
-                disabled={loading}
-              />
             </div>
 
             {/* Actions */}

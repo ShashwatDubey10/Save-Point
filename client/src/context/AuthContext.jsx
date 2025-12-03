@@ -76,6 +76,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const data = await authService.getMe();
+      setUser(data.user);
+      // Update localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+    } catch (err) {
+      console.error('Failed to refresh user:', err);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -84,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
+    refreshUser,
     setError,
   };
 

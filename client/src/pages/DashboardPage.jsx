@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
+import { analyticsService } from '../services/analyticsService';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
+  const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,18 +22,34 @@ const DashboardPage = () => {
   const [habitToDelete, setHabitToDelete] = useState(null);
 
   useEffect(() => {
-    fetchHabits();
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch both habits and weekly summary
+      const [habitsResponse, weeklyResponse] = await Promise.all([
+        habitService.getAll(),
+        analyticsService.getWeeklySummary()
+      ]);
+
+      setHabits(habitsResponse.data || []);
+      setWeeklyData(weeklyResponse.data);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchHabits = async () => {
     try {
       const data = await habitService.getAll();
-      setHabits(data.habits || []);
+      setHabits(data.data || []);
     } catch (err) {
       setError('Failed to load habits');
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -41,8 +60,11 @@ const DashboardPage = () => {
       } else {
         await habitService.complete(id);
       }
-      // Refresh habits
-      fetchHabits();
+      // Refresh dashboard data and user info to update XP and level
+      await Promise.all([
+        fetchDashboardData(),
+        refreshUser()
+      ]);
     } catch (err) {
       console.error('Failed to toggle habit:', err);
     }
@@ -57,6 +79,7 @@ const DashboardPage = () => {
   // Edit habit
   const handleEditHabit = (habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking edit
+    e.preventDefault(); // Prevent any default behavior
     setEditingHabit(habit);
     setIsHabitModalOpen(true);
   };
@@ -71,7 +94,7 @@ const DashboardPage = () => {
         // Create new habit
         await habitService.create(habitData);
       }
-      fetchHabits();
+      await fetchDashboardData();
       setIsHabitModalOpen(false);
       setEditingHabit(null);
     } catch (err) {
@@ -83,6 +106,7 @@ const DashboardPage = () => {
   // Delete habit
   const handleDeleteClick = (habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking delete
+    e.preventDefault(); // Prevent any default behavior
     setHabitToDelete(habit);
     setIsDeleteModalOpen(true);
   };
@@ -92,7 +116,8 @@ const DashboardPage = () => {
 
     try {
       await habitService.delete(habitToDelete._id);
-      fetchHabits();
+      await fetchDashboardData();
+      setIsDeleteModalOpen(false);
       setHabitToDelete(null);
     } catch (err) {
       console.error('Failed to delete habit:', err);
@@ -105,14 +130,26 @@ const DashboardPage = () => {
     navigate('/');
   };
 
-  const completedCount = habits.filter(h => h.completedToday).length;
-  const totalXP = user?.gamification?.totalXP || 0;
-  const level = user?.gamification?.level || 1;
-  const xpForNextLevel = level * 100;
-  const xpProgress = (totalXP % xpForNextLevel) / xpForNextLevel * 100;
+  // Check if habit is completed today by looking at the last completion date
+  const isCompletedToday = (habit) => {
+    if (!habit.completions || habit.completions.length === 0) return false;
+    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+    const today = new Date();
+    return lastCompletion.toDateString() === today.toDateString();
+  };
 
+  const completedCount = habits.filter(h => isCompletedToday(h)).length;
+  const totalXP = user?.gamification?.points || 0;
+  const level = user?.gamification?.level || 1;
+  const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
+  const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
+  const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
+
+  // Get weekly progress from analytics data
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekProgress = [85, 100, 70, 90, 100, 60, 0]; // TODO: Calculate from real data
+  const weekProgress = weeklyData?.habits?.dailyBreakdown
+    ? weeklyData.habits.dailyBreakdown.map(day => day.completionRate)
+    : [0, 0, 0, 0, 0, 0, 0];
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -132,39 +169,93 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-dark-900">
       {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 backdrop-blur-lg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-10" />
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link to="/dashboard" className="flex items-center gap-3 glass px-3 py-2 rounded-xl hover:bg-white/10 transition-all">
+              <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-8" />
             </Link>
 
-            <div className="flex items-center gap-6">
-              {/* XP Display */}
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 glass rounded-xl">
-                <span className="text-yellow-400">⭐</span>
-                <span className="text-white font-medium">{totalXP} XP</span>
+            {/* Center Stats - Hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-3">
+              {/* Streak Badge */}
+              <div className="flex items-center gap-2 bg-orange-500/20 px-4 py-2 rounded-xl border border-orange-500/30">
+                <span className="text-orange-400 text-lg">🔥</span>
+                <span className="text-sm font-semibold text-white">{user?.gamification?.streak?.current || 0} day streak</span>
               </div>
 
-              {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold">
+              {/* Level Badge */}
+              <div className="flex items-center gap-2 bg-gradient-to-r from-primary-600 to-purple-600 px-4 py-2 rounded-xl">
+                <span className="text-lg">🏆</span>
+                <span className="text-sm font-bold text-white">Level {level}</span>
+              </div>
+
+              {/* XP Progress */}
+              <div className="glass px-4 py-2 rounded-xl min-w-[200px]">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400">⭐</span>
+                    <span className="text-sm font-bold text-yellow-400">{pointsInLevel} / {xpForNextLevel} XP</span>
+                  </div>
+                </div>
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-500"
+                    style={{ width: `${Math.min(xpProgress, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - User Menu */}
+            <div className="flex items-center gap-3">
+              {/* Quick Stats for Mobile */}
+              <div className="lg:hidden flex items-center gap-2 glass px-3 py-2 rounded-xl">
+                <span className="text-yellow-400">⭐</span>
+                <span className="text-sm font-medium text-white">{totalXP}</span>
+              </div>
+
+              {/* User Avatar & Info */}
+              <div className="flex items-center gap-3 glass px-3 py-2 rounded-xl">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm">
                   {user?.username?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-gray-400 hover:text-white text-sm transition-colors"
-                >
-                  Logout
-                </button>
+                <div className="hidden sm:block">
+                  <div className="text-sm font-medium text-white leading-none mb-1">{user?.username || 'User'}</div>
+                  <div className="text-xs text-gray-400 leading-none">Level {level}</div>
+                </div>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="hidden sm:flex items-center gap-2 glass px-4 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm">Logout</span>
+              </button>
+
+              {/* Mobile Logout */}
+              <button
+                onClick={handleLogout}
+                className="sm:hidden glass px-3 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
+                title="Logout"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -203,7 +294,7 @@ const DashboardPage = () => {
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-2">{xpForNextLevel - (totalXP % xpForNextLevel)} XP to next level</p>
+            <p className="text-xs text-gray-500 mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP to next level</p>
           </Link>
 
           {/* Streak Card */}
@@ -246,6 +337,11 @@ const DashboardPage = () => {
           </div>
         </div>
 
+        {/* Monthly Habit Tracker */}
+        <div className="mb-8">
+          <MonthlyHabitTracker habits={habits} />
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Habits List */}
           <div className="lg:col-span-2">
@@ -285,17 +381,17 @@ const DashboardPage = () => {
                   <div
                     key={habit._id}
                     className={`glass rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer hover:bg-white/10 ${
-                      habit.completedToday ? 'border-green-500/30' : ''
+                      isCompletedToday(habit) ? 'border-green-500/30' : ''
                     }`}
-                    onClick={() => toggleHabit(habit._id, habit.completedToday)}
+                    onClick={() => toggleHabit(habit._id, isCompletedToday(habit))}
                   >
                     {/* Checkbox */}
                     <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      habit.completedToday
+                      isCompletedToday(habit)
                         ? 'bg-green-500 border-green-500'
                         : 'border-white/30 hover:border-primary-500'
                     }`}>
-                      {habit.completedToday && (
+                      {isCompletedToday(habit) && (
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
@@ -310,22 +406,22 @@ const DashboardPage = () => {
                     {/* Info */}
                     <div className="flex-1">
                       <h3 className={`font-medium transition-all ${
-                        habit.completedToday ? 'text-gray-400 line-through' : 'text-white'
+                        isCompletedToday(habit) ? 'text-gray-400 line-through' : 'text-white'
                       }`}>
-                        {habit.name}
+                        {habit.title || habit.name}
                       </h3>
-                      <p className="text-sm text-gray-500">{habit.category}</p>
+                      <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
                     </div>
 
                     {/* Streak */}
                     <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
                       <span className="text-orange-400">🔥</span>
-                      <span className="text-white font-medium">{habit.streak?.current || 0}</span>
+                      <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
                     </div>
 
                     {/* XP */}
                     <div className="text-primary-400 font-medium">
-                      +{habit.xpReward || 10} XP
+                      +10 XP
                     </div>
 
                     {/* Actions */}
@@ -464,7 +560,7 @@ const DashboardPage = () => {
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Habit?"
-        message={`Are you sure you want to delete "${habitToDelete?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${habitToDelete?.title || habitToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}

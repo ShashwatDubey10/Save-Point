@@ -1,4 +1,7 @@
+import useScrollAnimation from '../hooks/useScrollAnimation';
+
 const HowItWorks = () => {
+  const [sectionRef, isVisible] = useScrollAnimation({ threshold: 0.1 });
   const steps = [
     {
       number: '01',
@@ -31,7 +34,13 @@ const HowItWorks = () => {
   ];
 
   return (
-    <section id="how-it-works" className="py-24 relative overflow-hidden">
+    <section
+      id="how-it-works"
+      ref={sectionRef}
+      className={`py-24 relative overflow-hidden transition-all duration-1000 ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+      }`}
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-dark-800" />
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />

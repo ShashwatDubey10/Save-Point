@@ -2,16 +2,20 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
+import { analyticsService } from '../services/analyticsService';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const HabitsPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('recent'); // recent, name, streak
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal states
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
@@ -20,19 +24,41 @@ const HabitsPage = () => {
   const [habitToDelete, setHabitToDelete] = useState(null);
 
   useEffect(() => {
-    fetchHabits();
+    fetchData();
   }, []);
 
-  const fetchHabits = async () => {
+  const fetchData = async () => {
     try {
-      const data = await habitService.getAll();
-      setHabits(data.habits || []);
+      const [habitsResponse, statsResponse] = await Promise.all([
+        habitService.getAll(),
+        habitService.getStats()
+      ]);
+      setHabits(habitsResponse.data || []);
+      setStats(statsResponse.data || null);
     } catch (err) {
       setError('Failed to load habits');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchHabits = async () => {
+    try {
+      const data = await habitService.getAll();
+      setHabits(data.data || []);
+    } catch (err) {
+      setError('Failed to load habits');
+      console.error(err);
+    }
+  };
+
+  // Check if habit is completed today
+  const isCompletedToday = (habit) => {
+    if (!habit.completions || habit.completions.length === 0) return false;
+    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+    const today = new Date();
+    return lastCompletion.toDateString() === today.toDateString();
   };
 
   const toggleHabit = async (id, completed) => {
@@ -42,7 +68,11 @@ const HabitsPage = () => {
       } else {
         await habitService.complete(id);
       }
-      fetchHabits();
+      // Refresh data and user info
+      await Promise.all([
+        fetchData(),
+        refreshUser()
+      ]);
     } catch (err) {
       console.error('Failed to toggle habit:', err);
     }
@@ -55,6 +85,7 @@ const HabitsPage = () => {
 
   const handleEditHabit = (habit, e) => {
     e.stopPropagation();
+    e.preventDefault();
     setEditingHabit(habit);
     setIsHabitModalOpen(true);
   };
@@ -66,7 +97,7 @@ const HabitsPage = () => {
       } else {
         await habitService.create(habitData);
       }
-      fetchHabits();
+      fetchData();
       setIsHabitModalOpen(false);
       setEditingHabit(null);
     } catch (err) {
@@ -77,6 +108,7 @@ const HabitsPage = () => {
 
   const handleDeleteClick = (habit, e) => {
     e.stopPropagation();
+    e.preventDefault();
     setHabitToDelete(habit);
     setIsDeleteModalOpen(true);
   };
@@ -86,7 +118,7 @@ const HabitsPage = () => {
 
     try {
       await habitService.delete(habitToDelete._id);
-      fetchHabits();
+      fetchData();
       setHabitToDelete(null);
     } catch (err) {
       console.error('Failed to delete habit:', err);
@@ -99,17 +131,42 @@ const HabitsPage = () => {
     navigate('/');
   };
 
-  // Get unique categories
-  const categories = ['all', ...new Set(habits.map(h => h.category).filter(Boolean))];
+  // Get unique categories from backend enum
+  const allCategories = ['health', 'fitness', 'productivity', 'mindfulness', 'learning', 'social', 'creative', 'other'];
+  const existingCategories = [...new Set(habits.map(h => h.category).filter(Boolean))];
+  const categories = ['all', ...existingCategories];
 
-  // Filter habits by category
-  const filteredHabits = filterCategory === 'all'
-    ? habits
-    : habits.filter(h => h.category === filterCategory);
+  // Filter habits by category and search
+  let filteredHabits = habits;
+
+  if (filterCategory !== 'all') {
+    filteredHabits = filteredHabits.filter(h => h.category === filterCategory);
+  }
+
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredHabits = filteredHabits.filter(h =>
+      (h.title || h.name || '').toLowerCase().includes(query) ||
+      (h.description || '').toLowerCase().includes(query)
+    );
+  }
+
+  // Sort habits
+  const sortedHabits = [...filteredHabits].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return (a.title || a.name || '').localeCompare(b.title || b.name || '');
+      case 'streak':
+        return (b.stats?.currentStreak || 0) - (a.stats?.currentStreak || 0);
+      case 'recent':
+      default:
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
 
   // Group habits by category for display
-  const groupedHabits = filteredHabits.reduce((acc, habit) => {
-    const category = habit.category || 'Uncategorized';
+  const groupedHabits = sortedHabits.reduce((acc, habit) => {
+    const category = habit.category || 'other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(habit);
     return acc;
@@ -126,35 +183,66 @@ const HabitsPage = () => {
   return (
     <div className="min-h-screen bg-dark-900">
       {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 backdrop-blur-lg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/dashboard" className="flex items-center">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-10" />
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link to="/dashboard" className="flex items-center gap-3 glass px-3 py-2 rounded-xl hover:bg-white/10 transition-all">
+              <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-8" />
             </Link>
 
-            <div className="flex items-center gap-6">
-              <Link to="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">
+            {/* Navigation Links - Hidden on mobile */}
+            <div className="hidden md:flex items-center gap-6">
+              <Link to="/dashboard" className="text-gray-400 hover:text-white text-sm font-medium transition-colors">
                 Dashboard
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold">
+              <Link to="/tasks" className="text-gray-400 hover:text-white text-sm font-medium transition-colors">
+                Tasks
+              </Link>
+            </div>
+
+            {/* Right Side - User Menu */}
+            <div className="flex items-center gap-3">
+              {/* User Avatar & Info */}
+              <div className="flex items-center gap-3 glass px-3 py-2 rounded-xl">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm">
                   {user?.username?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-gray-400 hover:text-white text-sm transition-colors"
-                >
-                  Logout
-                </button>
+                <div className="hidden sm:block">
+                  <div className="text-sm font-medium text-white leading-none mb-1">{user?.username || 'User'}</div>
+                  <div className="text-xs text-gray-400 leading-none">Habits</div>
+                </div>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="hidden sm:flex items-center gap-2 glass px-4 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm">Logout</span>
+              </button>
+
+              {/* Mobile Logout */}
+              <button
+                onClick={handleLogout}
+                className="sm:hidden glass px-3 py-2.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors h-[45px]"
+                title="Logout"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -172,33 +260,111 @@ const HabitsPage = () => {
           </div>
         )}
 
-        {/* Filters and Stats */}
-        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {categories.map(category => (
-              <button
-                key={category}
-                onClick={() => setFilterCategory(category)}
-                className={`px-4 py-2 rounded-xl transition-all ${
-                  filterCategory === category
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </button>
-            ))}
+        {/* Statistics Cards */}
+        {stats && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="glass rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-xl">
+                  📊
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Total Habits</p>
+                  <p className="text-2xl font-bold text-white">{stats.totalHabits}</p>
+                </div>
+              </div>
+            </div>
+            <div className="glass rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xl">
+                  ✅
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Completed Today</p>
+                  <p className="text-2xl font-bold text-white">{stats.completedToday}</p>
+                </div>
+              </div>
+            </div>
+            <div className="glass rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-xl">
+                  🔥
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Longest Streak</p>
+                  <p className="text-2xl font-bold text-white">{stats.longestStreak} days</p>
+                </div>
+              </div>
+            </div>
+            <div className="glass rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl">
+                  🎯
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Total Completions</p>
+                  <p className="text-2xl font-bold text-white">{stats.totalCompletions}</p>
+                </div>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Search and Sort Controls */}
+        <div className="mb-6 flex flex-col lg:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search habits..."
+                className="w-full px-4 py-3 pl-11 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
+              />
+              <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 transition-colors"
+          >
+            <option value="recent" className="bg-dark-800">Most Recent</option>
+            <option value="name" className="bg-dark-800">Name (A-Z)</option>
+            <option value="streak" className="bg-dark-800">Highest Streak</option>
+          </select>
 
           <button
             onClick={handleCreateHabit}
-            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Add Habit
           </button>
+        </div>
+
+        {/* Category Filters */}
+        <div className="mb-6 flex items-center gap-2 flex-wrap">
+          {categories.map(category => (
+            <button
+              key={category}
+              onClick={() => setFilterCategory(category)}
+              className={`px-4 py-2 rounded-xl transition-all capitalize ${
+                filterCategory === category
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {category === 'all' ? 'All' : category}
+            </button>
+          ))}
         </div>
 
         {/* Habits Grid */}
@@ -214,49 +380,69 @@ const HabitsPage = () => {
               Create Your First Habit
             </button>
           </div>
+        ) : sortedHabits.length === 0 ? (
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="text-4xl mb-4">🔍</div>
+            <h3 className="text-xl font-bold text-white mb-2">No habits found</h3>
+            <p className="text-gray-400 mb-4">
+              {searchQuery ? 'Try a different search term' : 'Try selecting a different category'}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedHabits).map(([category, categoryHabits]) => (
               <div key={category}>
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2 capitalize">
                   <span className="text-2xl">
-                    {category === 'Health' && '💪'}
-                    {category === 'Productivity' && '🎯'}
-                    {category === 'Learning' && '📚'}
-                    {category === 'Mindfulness' && '🧘'}
-                    {category === 'Social' && '👥'}
-                    {category === 'Uncategorized' && '📌'}
+                    {category === 'health' && '💪'}
+                    {category === 'fitness' && '🏃'}
+                    {category === 'productivity' && '🎯'}
+                    {category === 'learning' && '📚'}
+                    {category === 'mindfulness' && '🧘'}
+                    {category === 'social' && '👥'}
+                    {category === 'creative' && '🎨'}
+                    {category === 'other' && '📌'}
                   </span>
                   {category} ({categoryHabits.length})
                 </h2>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {categoryHabits.map((habit) => (
-                    <div
-                      key={habit._id}
-                      className={`glass rounded-xl p-5 transition-all cursor-pointer hover:bg-white/10 ${
-                        habit.completedToday ? 'border border-green-500/30' : ''
-                      }`}
-                      onClick={() => toggleHabit(habit._id, habit.completedToday)}
-                    >
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${
-                            habit.completedToday
-                              ? 'bg-green-500 border-green-500'
-                              : 'border-white/30 hover:border-primary-500'
-                          }`}>
-                            {habit.completedToday && (
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                  {categoryHabits.map((habit) => {
+                    const completed = isCompletedToday(habit);
+                    return (
+                      <div
+                        key={habit._id}
+                        className={`glass rounded-xl p-5 transition-all cursor-pointer hover:bg-white/10 ${
+                          completed ? 'border border-green-500/30' : ''
+                        }`}
+                        onClick={() => toggleHabit(habit._id, completed)}
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${
+                              completed
+                                ? 'bg-green-500 border-green-500'
+                                : 'border-white/30 hover:border-primary-500'
+                            }`}>
+                              {completed && (
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
+                              {habit.icon || '📌'}
+                            </div>
                           </div>
-                          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
-                            {habit.icon || '📌'}
-                          </div>
-                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={(e) => handleEditHabit(habit, e)}
@@ -279,37 +465,35 @@ const HabitsPage = () => {
                         </div>
                       </div>
 
-                      {/* Info */}
-                      <h3 className={`font-bold text-lg mb-1 transition-all ${
-                        habit.completedToday ? 'text-gray-400 line-through' : 'text-white'
-                      }`}>
-                        {habit.name}
-                      </h3>
-                      {habit.description && (
-                        <p className="text-sm text-gray-500 mb-4 line-clamp-2">{habit.description}</p>
-                      )}
+                        {/* Info */}
+                        <h3 className={`font-bold text-lg mb-1 transition-all ${
+                          completed ? 'text-gray-400 line-through' : 'text-white'
+                        }`}>
+                          {habit.title || habit.name}
+                        </h3>
+                        {habit.description && (
+                          <p className="text-sm text-gray-500 mb-4 line-clamp-2">{habit.description}</p>
+                        )}
 
-                      {/* Stats */}
-                      <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                        <div className="flex items-center gap-2">
-                          <span className="text-orange-400">🔥</span>
-                          <span className="text-white font-medium">{habit.streak?.current || 0} day streak</span>
+                        {/* Stats */}
+                        <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                          <div className="flex items-center gap-2">
+                            <span className="text-orange-400">🔥</span>
+                            <span className="text-white font-medium">{habit.stats?.currentStreak || 0} day streak</span>
+                          </div>
+                          <div className="text-primary-400 font-medium">
+                            +10 XP
+                          </div>
                         </div>
-                        <div className="text-primary-400 font-medium">
-                          +{habit.xpReward || 10} XP
+
+                        {/* Additional Info */}
+                        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                          <span className="capitalize">{habit.frequency || 'daily'}</span>
+                          <span>{habit.stats?.totalCompletions || 0} total completions</span>
                         </div>
                       </div>
-
-                      {/* Frequency */}
-                      {habit.frequency && (
-                        <div className="mt-3 text-xs text-gray-500">
-                          {habit.frequency.type === 'daily' && 'Daily'}
-                          {habit.frequency.type === 'weekly' && `${habit.frequency.daysPerWeek || 0} times per week`}
-                          {habit.frequency.type === 'custom' && 'Custom schedule'}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -336,7 +520,7 @@ const HabitsPage = () => {
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Habit?"
-        message={`Are you sure you want to delete "${habitToDelete?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${habitToDelete?.title || habitToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}

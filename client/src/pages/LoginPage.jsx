@@ -54,10 +54,10 @@ const LoginPage = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in-up">
-          <Link to="/">
-            <img src="/SavePointLogo.png" alt="Save Point" className="h-24 mx-auto mb-6" />
+          <Link to="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
+            <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-16" />
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-white mb-2 mt-6">Welcome Back</h1>
           <p className="text-gray-400">Continue your habit-building journey</p>
         </div>
 

@@ -1,4 +1,7 @@
+import useScrollAnimation from '../hooks/useScrollAnimation';
+
 const ProductShowcase = () => {
+  const [sectionRef, isVisible] = useScrollAnimation({ threshold: 0.1 });
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
   const currentDay = 23;
 
@@ -24,7 +27,13 @@ const ProductShowcase = () => {
   ];
 
   return (
-    <section id="showcase" className="py-24 relative overflow-hidden">
+    <section
+      id="showcase"
+      ref={sectionRef}
+      className={`py-24 relative overflow-hidden transition-all duration-1000 ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+      }`}
+    >
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900" />
 
