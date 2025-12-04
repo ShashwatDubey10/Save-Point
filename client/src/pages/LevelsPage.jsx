@@ -18,7 +18,7 @@ const LevelsPage = () => {
   const fetchHabits = async () => {
     try {
       const data = await habitService.getAll();
-      setHabits(data.habits || []);
+      setHabits(data.data || []);
     } catch (err) {
       setError('Failed to load habits');
       console.error(err);
@@ -28,7 +28,7 @@ const LevelsPage = () => {
   };
 
   // Calculate XP and Level stats
-  const totalXP = user?.gamification?.totalPoints || 0;
+  const totalXP = user?.gamification?.points || 0;
   const level = user?.gamification?.level || 1;
   const POINTS_PER_LEVEL = 100;
   const xpForNextLevel = level * POINTS_PER_LEVEL;
@@ -58,11 +58,11 @@ const LevelsPage = () => {
   // Badges
   const allBadges = [
     { id: 'first_habit', name: 'First Habit', description: 'Create your first habit', icon: '🎯', unlocked: habits.length > 0 },
-    { id: 'week_warrior', name: 'Week Warrior', description: 'Complete a habit for 7 days straight', icon: '💪', unlocked: habits.some(h => (h.streak?.current || 0) >= 7) },
+    { id: 'week_warrior', name: 'Week Warrior', description: 'Complete a habit for 7 days straight', icon: '💪', unlocked: habits.some(h => (h.stats?.currentStreak || 0) >= 7) },
     { id: 'perfect_day', name: 'Perfect Day', description: 'Complete all habits in a day', icon: '⭐', unlocked: false },
     { id: 'early_bird', name: 'Early Bird', description: 'Complete a habit before 7 AM', icon: '🌅', unlocked: false },
     { id: 'night_owl', name: 'Night Owl', description: 'Complete a habit after 10 PM', icon: '🦉', unlocked: false },
-    { id: 'month_master', name: 'Month Master', description: '30-day streak on any habit', icon: '📅', unlocked: habits.some(h => (h.streak?.current || 0) >= 30) },
+    { id: 'month_master', name: 'Month Master', description: '30-day streak on any habit', icon: '📅', unlocked: habits.some(h => (h.stats?.currentStreak || 0) >= 30) },
     { id: 'diversified', name: 'Diversified', description: 'Have habits in 5 different categories', icon: '🎨', unlocked: false },
     { id: 'collector', name: 'Habit Collector', description: 'Create 10 habits', icon: '📚', unlocked: habits.length >= 10 },
   ];
@@ -84,7 +84,7 @@ const LevelsPage = () => {
       <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -250,12 +250,12 @@ const LevelsPage = () => {
           </div>
           <div className="glass rounded-xl p-4 text-center">
             <p className="text-3xl mb-2">🔥</p>
-            <p className="text-2xl font-bold text-white">{user?.gamification?.currentStreak || 0}</p>
+            <p className="text-2xl font-bold text-white">{user?.gamification?.streak?.current || 0}</p>
             <p className="text-sm text-gray-500">Current Streak</p>
           </div>
           <div className="glass rounded-xl p-4 text-center">
             <p className="text-3xl mb-2">🏆</p>
-            <p className="text-2xl font-bold text-white">{user?.gamification?.longestStreak || 0}</p>
+            <p className="text-2xl font-bold text-white">{user?.gamification?.streak?.longest || 0}</p>
             <p className="text-sm text-gray-500">Longest Streak</p>
           </div>
           <div className="glass rounded-xl p-4 text-center">

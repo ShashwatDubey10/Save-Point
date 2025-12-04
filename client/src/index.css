@@ -102,6 +102,11 @@ body {
   background-clip: text;
 }
 
+/* Radial gradient background */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
 /* Glass effect */
 .glass {
   background: rgba(255, 255, 255, 0.05);
@@ -163,4 +168,71 @@ a[href],
 [role="button"],
 .cursor-pointer {
   cursor: pointer;
+}
+
+/* Achievement Animation Keyframes */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-slow-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.1) translateY(-10px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5) rotate(180deg);
+  }
+}
+
+@keyframes text-glow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(99, 102, 241, 0.5),
+                 0 0 40px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(99, 102, 241, 0.8),
+                 0 0 60px rgba(99, 102, 241, 0.5);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-slow-reverse 6s linear infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-text-glow {
+  animation: text-glow 2s ease-in-out infinite;
 }

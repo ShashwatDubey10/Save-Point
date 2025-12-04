@@ -115,7 +115,7 @@ const ProfilePage = () => {
       <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-4xl">

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import TaskModal from '../components/TaskModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
+import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { KanbanColumn, DraggableTaskCard } from '../components/KanbanBoard';
 
 const TasksPage = () => {
   const { user } = useAuth();
@@ -14,13 +17,24 @@ const TasksPage = () => {
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
-  const [view, setView] = useState('list'); // 'list' or 'board'
+  const [view, setView] = useState('board'); // 'list' or 'board'
 
   // Modal states
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+
+  // Drag and drop state
+  const [activeId, setActiveId] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3, // Reduced for more responsive dragging
+      },
+    })
+  );
 
   useEffect(() => {
     fetchTasks();
@@ -58,14 +72,17 @@ const TasksPage = () => {
     try {
       if (editingTask) {
         await taskService.update(editingTask._id, taskData);
+        toast.success('Task updated successfully!');
       } else {
         await taskService.create(taskData);
+        toast.success('Task created successfully!');
       }
       fetchTasks();
       setIsTaskModalOpen(false);
       setEditingTask(null);
     } catch (err) {
       console.error('Failed to save task:', err);
+      toast.error('Failed to save task. Please try again.');
       throw err;
     }
   };
@@ -82,11 +99,13 @@ const TasksPage = () => {
 
     try {
       await taskService.delete(taskToDelete._id);
+      toast.success('Task deleted successfully!');
       fetchTasks();
       setIsDeleteModalOpen(false);
       setTaskToDelete(null);
     } catch (err) {
       console.error('Failed to delete task:', err);
+      toast.error('Failed to delete task. Please try again.');
       setError('Failed to delete task');
     }
   };
@@ -94,17 +113,68 @@ const TasksPage = () => {
   const handleToggleTask = async (taskId) => {
     try {
       await taskService.toggleStatus(taskId);
+      toast.success('Task status updated!');
       fetchTasks();
     } catch (err) {
       console.error('Failed to toggle task:', err);
+      toast.error('Failed to update task status.');
     }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (event) => {
+    const taskId = event.active.id;
+    setActiveId(taskId);
+    const task = tasks.find(t => t._id === taskId);
+    setActiveTask(task);
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setActiveTask(null);
+
+    if (!over) {
+      return;
+    }
+
+    const taskId = active.id;
+    const currentTask = tasks.find(t => t._id === taskId);
+
+    if (!currentTask) {
+      return;
+    }
+
+    // Check if dropped on a different status column
+    const newStatus = over.id;
+    if (newStatus === currentTask.status) {
+      return; // No change needed
+    }
+
+    // Update task status
+    if (newStatus === 'todo' || newStatus === 'in-progress' || newStatus === 'completed') {
+      try {
+        await taskService.updateStatus(taskId, newStatus);
+        toast.success(`Task moved to ${newStatus === 'in-progress' ? 'In Progress' : newStatus === 'todo' ? 'To Do' : 'Completed'}!`);
+        fetchTasks();
+      } catch (err) {
+        console.error('Failed to update task status:', err);
+        toast.error('Failed to move task. Please try again.');
+        setError('Failed to move task');
+      }
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setActiveTask(null);
   };
 
   // Group tasks by status for board view
   const tasksByStatus = {
     todo: tasks.filter(t => t.status === 'todo'),
     'in-progress': tasks.filter(t => t.status === 'in-progress'),
-    completed: tasks.filter(t => t.status === 'completed'),
+    completed: tasks.filter(t => t.status === 'completed')
   };
 
   const getPriorityColor = (priority) => {
@@ -172,15 +242,22 @@ const TasksPage = () => {
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-start gap-3 flex-1">
-            {/* Checkbox */}
+            {/* Status Icon - cycles through: todo -> in-progress -> completed */}
             <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all mt-0.5 ${
               task.status === 'completed'
                 ? 'bg-green-500 border-green-500'
+                : task.status === 'in-progress'
+                ? 'bg-primary-500 border-primary-500'
                 : 'border-white/30 hover:border-primary-500'
-            }`}>
+            }`} title={`Status: ${task.status}. Click to cycle status.`}>
               {task.status === 'completed' && (
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {task.status === 'in-progress' && (
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               )}
             </div>
@@ -198,6 +275,17 @@ const TasksPage = () => {
 
               {/* Meta Info */}
               <div className="flex flex-wrap items-center gap-2 text-xs">
+                {/* Status Badge */}
+                <span className={`px-2 py-1 rounded-lg border ${
+                  task.status === 'completed' ? 'text-green-400 bg-green-500/10 border-green-500/30' :
+                  task.status === 'in-progress' ? 'text-primary-400 bg-primary-500/10 border-primary-500/30' :
+                  'text-gray-400 bg-gray-500/10 border-gray-500/30'
+                }`}>
+                  {task.status === 'completed' ? '✓ Completed' :
+                   task.status === 'in-progress' ? '⚡ In Progress' :
+                   '○ To Do'}
+                </span>
+
                 {/* Priority Badge */}
                 <span className={`px-2 py-1 rounded-lg border ${getPriorityColor(task.priority)}`}>
                   {getPriorityIcon(task.priority)} {task.priority}
@@ -260,14 +348,14 @@ const TasksPage = () => {
       <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
             Tasks & Deadlines 📋
           </h1>
           <p className="text-gray-400">
-            Manage your tasks and stay on top of your deadlines
+            Manage your tasks and stay on top of your deadlines. Click on a task's status icon to cycle: To Do → In Progress → Completed
           </p>
         </div>
 
@@ -363,56 +451,79 @@ const TasksPage = () => {
             ))}
           </div>
         ) : (
-          /* Board View */
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* To Do Column */}
-            <div className="glass rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">📝</span>
-                To Do ({tasksByStatus.todo.length})
-              </h2>
-              <div className="space-y-3">
-                {tasksByStatus.todo.map((task) => (
-                  <TaskCard key={task._id} task={task} />
-                ))}
-                {tasksByStatus.todo.length === 0 && (
-                  <p className="text-center text-gray-500 text-sm py-8">No pending tasks</p>
-                )}
-              </div>
+          /* Board View with Drag & Drop */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              <KanbanColumn
+                status="todo"
+                title="To Do"
+                tasks={tasksByStatus.todo}
+                onEdit={(task) => {
+                  setEditingTask(task);
+                  setIsTaskModalOpen(true);
+                }}
+                onDelete={(task) => {
+                  setTaskToDelete(task);
+                  setIsDeleteModalOpen(true);
+                }}
+                icon="📝"
+                color="text-gray-400 bg-gray-500/10"
+              />
+
+              <KanbanColumn
+                status="in-progress"
+                title="In Progress"
+                tasks={tasksByStatus['in-progress']}
+                onEdit={(task) => {
+                  setEditingTask(task);
+                  setIsTaskModalOpen(true);
+                }}
+                onDelete={(task) => {
+                  setTaskToDelete(task);
+                  setIsDeleteModalOpen(true);
+                }}
+                icon="⚡"
+                color="text-primary-400 bg-primary-500/10"
+              />
+
+              <KanbanColumn
+                status="completed"
+                title="Completed"
+                tasks={tasksByStatus.completed}
+                onEdit={(task) => {
+                  setEditingTask(task);
+                  setIsTaskModalOpen(true);
+                }}
+                onDelete={(task) => {
+                  setTaskToDelete(task);
+                  setIsDeleteModalOpen(true);
+                }}
+                icon="✅"
+                color="text-green-400 bg-green-500/10"
+              />
             </div>
 
-            {/* In Progress Column */}
-            <div className="glass rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">⚡</span>
-                In Progress ({tasksByStatus['in-progress'].length})
-              </h2>
-              <div className="space-y-3">
-                {tasksByStatus['in-progress'].map((task) => (
-                  <TaskCard key={task._id} task={task} />
-                ))}
-                {tasksByStatus['in-progress'].length === 0 && (
-                  <p className="text-center text-gray-500 text-sm py-8">No tasks in progress</p>
-                )}
-              </div>
-            </div>
-
-            {/* Completed Column */}
-            <div className="glass rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">✅</span>
-                Completed ({tasksByStatus.completed.length})
-              </h2>
-              <div className="space-y-3">
-                {tasksByStatus.completed.map((task) => (
-                  <TaskCard key={task._id} task={task} />
-                ))}
-                {tasksByStatus.completed.length === 0 && (
-                  <p className="text-center text-gray-500 text-sm py-8">No completed tasks</p>
-                )}
-              </div>
-            </div>
-          </div>
+            <DragOverlay dropAnimation={{
+              duration: 200,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
+              {activeTask ? (
+                <div className="rotate-3 scale-105" style={{ cursor: 'grabbing' }}>
+                  <DraggableTaskCard
+                    task={activeTask}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </main>
 

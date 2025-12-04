@@ -234,13 +234,27 @@ export const uncompleteHabit = asyncHandler(async (req, res) => {
     });
   }
 
+  // Calculate points that were awarded (using current streak before uncompleting)
+  const user = await User.findById(req.user.id);
+  const pointsToDeduct = gamificationService.calculateHabitPoints(habit, habit.stats.currentStreak);
+
   // Uncomplete habit
   habit.uncomplete();
   await habit.save();
 
+  // Deduct points from user
+  user.gamification.points = Math.max(0, user.gamification.points - pointsToDeduct);
+  user.calculateLevel();
+  await user.save();
+
   res.status(200).json({
     success: true,
-    data: habit
+    data: habit,
+    points: {
+      deducted: pointsToDeduct,
+      total: user.gamification.points,
+      level: user.gamification.level
+    }
   });
 });
 

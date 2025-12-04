@@ -103,14 +103,18 @@ taskSchema.virtual('subtaskProgress').get(function() {
   return Math.round((completed / this.subtasks.length) * 100);
 });
 
-// Method to toggle task status
+// Method to toggle task status (cycles: todo -> in-progress -> completed -> todo)
 taskSchema.methods.toggleStatus = function() {
-  if (this.status === 'completed') {
-    this.status = 'todo';
+  if (this.status === 'todo') {
+    this.status = 'in-progress';
     this.completedAt = null;
-  } else {
+  } else if (this.status === 'in-progress') {
     this.status = 'completed';
     this.completedAt = new Date();
+  } else {
+    // completed -> todo
+    this.status = 'todo';
+    this.completedAt = null;
   }
 };
 

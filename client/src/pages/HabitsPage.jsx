@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
 import { analyticsService } from '../services/analyticsService';
@@ -57,17 +58,25 @@ const HabitsPage = () => {
   // Check if habit is completed today
   const isCompletedToday = (habit) => {
     if (!habit.completions || habit.completions.length === 0) return false;
-    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+
     const today = new Date();
-    return lastCompletion.toDateString() === today.toDateString();
+    today.setHours(0, 0, 0, 0);
+
+    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+    lastCompletion.setHours(0, 0, 0, 0);
+
+    return lastCompletion.getTime() === today.getTime();
   };
 
   const toggleHabit = async (id, completed) => {
     try {
       if (completed) {
         await habitService.uncomplete(id);
+        toast.success('Habit marked as incomplete');
       } else {
-        await habitService.complete(id);
+        const response = await habitService.complete(id);
+        const points = response.data?.points?.earned || 10;
+        toast.success(`Habit completed! +${points} XP earned 🎉`);
       }
       // Refresh data and user info
       await Promise.all([
@@ -76,6 +85,7 @@ const HabitsPage = () => {
       ]);
     } catch (err) {
       console.error('Failed to toggle habit:', err);
+      toast.error('Failed to update habit. Please try again.');
     }
   };
 
@@ -95,14 +105,17 @@ const HabitsPage = () => {
     try {
       if (editingHabit) {
         await habitService.update(editingHabit._id, habitData);
+        toast.success('Habit updated successfully!');
       } else {
         await habitService.create(habitData);
+        toast.success('Habit created successfully!');
       }
       fetchData();
       setIsHabitModalOpen(false);
       setEditingHabit(null);
     } catch (err) {
       console.error('Failed to save habit:', err);
+      toast.error('Failed to save habit. Please try again.');
       throw err;
     }
   };
@@ -119,10 +132,13 @@ const HabitsPage = () => {
 
     try {
       await habitService.delete(habitToDelete._id);
+      toast.success('Habit deleted successfully!');
       fetchData();
+      setIsDeleteModalOpen(false);
       setHabitToDelete(null);
     } catch (err) {
       console.error('Failed to delete habit:', err);
+      toast.error('Failed to delete habit. Please try again.');
       setError('Failed to delete habit');
     }
   };
@@ -183,7 +199,7 @@ const HabitsPage = () => {
       <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
