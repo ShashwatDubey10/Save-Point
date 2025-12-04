@@ -13,8 +13,9 @@ export const DraggableTaskCard = ({ task, onEdit, onDelete }) => {
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
     cursor: isDragging ? 'grabbing' : 'grab',
+    transition: isDragging ? 'none' : 'transform 200ms ease, opacity 200ms ease',
   };
 
   const getPriorityColor = (priority) => {

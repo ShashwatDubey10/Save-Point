@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import TaskModal from '../components/TaskModal';
@@ -7,7 +8,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { KanbanColumn } from '../components/KanbanBoard';
+import { KanbanColumn, DraggableTaskCard } from '../components/KanbanBoard';
 
 const TasksPage = () => {
   const { user } = useAuth();
@@ -26,10 +27,11 @@ const TasksPage = () => {
 
   // Drag and drop state
   const [activeId, setActiveId] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3, // Reduced for more responsive dragging
       },
     })
   );
@@ -70,14 +72,17 @@ const TasksPage = () => {
     try {
       if (editingTask) {
         await taskService.update(editingTask._id, taskData);
+        toast.success('Task updated successfully!');
       } else {
         await taskService.create(taskData);
+        toast.success('Task created successfully!');
       }
       fetchTasks();
       setIsTaskModalOpen(false);
       setEditingTask(null);
     } catch (err) {
       console.error('Failed to save task:', err);
+      toast.error('Failed to save task. Please try again.');
       throw err;
     }
   };
@@ -94,11 +99,13 @@ const TasksPage = () => {
 
     try {
       await taskService.delete(taskToDelete._id);
+      toast.success('Task deleted successfully!');
       fetchTasks();
       setIsDeleteModalOpen(false);
       setTaskToDelete(null);
     } catch (err) {
       console.error('Failed to delete task:', err);
+      toast.error('Failed to delete task. Please try again.');
       setError('Failed to delete task');
     }
   };
@@ -106,20 +113,26 @@ const TasksPage = () => {
   const handleToggleTask = async (taskId) => {
     try {
       await taskService.toggleStatus(taskId);
+      toast.success('Task status updated!');
       fetchTasks();
     } catch (err) {
       console.error('Failed to toggle task:', err);
+      toast.error('Failed to update task status.');
     }
   };
 
   // Drag and drop handlers
   const handleDragStart = (event) => {
-    setActiveId(event.active.id);
+    const taskId = event.active.id;
+    setActiveId(taskId);
+    const task = tasks.find(t => t._id === taskId);
+    setActiveTask(task);
   };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     setActiveId(null);
+    setActiveTask(null);
 
     if (!over) {
       return;
@@ -142,9 +155,11 @@ const TasksPage = () => {
     if (newStatus === 'todo' || newStatus === 'in-progress' || newStatus === 'completed') {
       try {
         await taskService.updateStatus(taskId, newStatus);
+        toast.success(`Task moved to ${newStatus === 'in-progress' ? 'In Progress' : newStatus === 'todo' ? 'To Do' : 'Completed'}!`);
         fetchTasks();
       } catch (err) {
         console.error('Failed to update task status:', err);
+        toast.error('Failed to move task. Please try again.');
         setError('Failed to move task');
       }
     }
@@ -152,6 +167,7 @@ const TasksPage = () => {
 
   const handleDragCancel = () => {
     setActiveId(null);
+    setActiveTask(null);
   };
 
   // Group tasks by status for board view
@@ -332,7 +348,7 @@ const TasksPage = () => {
       <AppNavigation />
 
       {/* Main Content */}
-      <main className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -492,6 +508,21 @@ const TasksPage = () => {
                 color="text-green-400 bg-green-500/10"
               />
             </div>
+
+            <DragOverlay dropAnimation={{
+              duration: 200,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
+              {activeTask ? (
+                <div className="rotate-3 scale-105" style={{ cursor: 'grabbing' }}>
+                  <DraggableTaskCard
+                    task={activeTask}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
       </main>
