@@ -45,6 +45,12 @@ export const taskService = {
     return response.data.data;
   },
 
+  // Update task status directly
+  async updateStatus(id, status) {
+    const response = await api.put(`/tasks/${id}`, { status });
+    return response.data.data;
+  },
+
   // Toggle subtask completion
   async toggleSubtask(taskId, subtaskId) {
     const response = await api.post(`/tasks/${taskId}/subtasks/${subtaskId}/toggle`);

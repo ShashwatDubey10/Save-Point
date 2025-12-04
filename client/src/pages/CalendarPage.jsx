@@ -26,8 +26,8 @@ const CalendarPage = () => {
         habitService.getAll(),
         taskService.getAll(),
       ]);
-      setHabits(habitsData.habits || []);
-      setTasks(tasksData.tasks || []);
+      setHabits(habitsData.data || []);
+      setTasks(tasksData || []);
     } catch (err) {
       setError('Failed to load calendar data');
       console.error(err);
@@ -61,10 +61,22 @@ const CalendarPage = () => {
   // Get tasks for a specific date
   const getTasksForDate = (date) => {
     return tasks.filter(task => {
-      const taskDate = new Date(task.deadline);
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
       return taskDate.getFullYear() === date.getFullYear() &&
              taskDate.getMonth() === date.getMonth() &&
              taskDate.getDate() === date.getDate();
+    });
+  };
+
+  // Get habit completions for a specific date
+  const getHabitCompletionsForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return habits.filter(habit => {
+      return habit.completions && habit.completions.some(completion => {
+        const completionDate = new Date(completion.date).toISOString().split('T')[0];
+        return completionDate === dateStr;
+      });
     });
   };
 
@@ -204,7 +216,8 @@ const CalendarPage = () => {
                 }
 
                 const dayTasks = getTasksForDate(date);
-                const hasEvents = dayTasks.length > 0 || habits.length > 0;
+                const dayHabits = getHabitCompletionsForDate(date);
+                const hasEvents = dayTasks.length > 0 || dayHabits.length > 0;
 
                 return (
                   <button
@@ -223,7 +236,7 @@ const CalendarPage = () => {
                     {/* Event Indicators */}
                     {hasEvents && (
                       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-                        {habits.length > 0 && (
+                        {dayHabits.length > 0 && (
                           <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                         )}
                         {dayTasks.length > 0 && (
@@ -307,20 +320,20 @@ const CalendarPage = () => {
                   )}
                 </div>
 
-                {/* Daily Habits */}
+                {/* Habit Completions */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 rounded-full bg-green-400" />
                     <p className="text-sm font-medium text-gray-300">
-                      Daily Habits ({habits.length})
+                      Habits Completed ({getHabitCompletionsForDate(selectedDate).length})
                     </p>
                   </div>
 
-                  {habits.length === 0 ? (
-                    <p className="text-sm text-gray-500">No habits to complete</p>
+                  {getHabitCompletionsForDate(selectedDate).length === 0 ? (
+                    <p className="text-sm text-gray-500">No habits completed on this day</p>
                   ) : (
                     <div className="space-y-2">
-                      {habits.slice(0, 5).map(habit => (
+                      {getHabitCompletionsForDate(selectedDate).map(habit => (
                         <Link
                           key={habit._id}
                           to="/habits"
@@ -329,9 +342,9 @@ const CalendarPage = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{habit.icon || '📌'}</span>
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-white">{habit.name}</p>
+                              <p className="text-sm font-medium text-white">{habit.title}</p>
                               <p className="text-xs text-gray-500">
-                                {habit.streak?.current || 0} day streak
+                                {habit.stats?.currentStreak || 0} day streak
                               </p>
                             </div>
                           </div>

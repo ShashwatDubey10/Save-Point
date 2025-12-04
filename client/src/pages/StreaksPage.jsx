@@ -18,7 +18,7 @@ const StreaksPage = () => {
   const fetchHabits = async () => {
     try {
       const data = await habitService.getAll();
-      setHabits(data.habits || []);
+      setHabits(data.data || []);
     } catch (err) {
       setError('Failed to load habits');
       console.error(err);
@@ -28,23 +28,23 @@ const StreaksPage = () => {
   };
 
   // Calculate streak stats
-  const currentStreak = user?.gamification?.currentStreak || 0;
-  const longestStreak = user?.gamification?.longestStreak || 0;
-  const totalDaysActive = habits.reduce((sum, habit) => sum + (habit.streak?.current || 0), 0);
+  const currentStreak = user?.gamification?.streak?.current || 0;
+  const longestStreak = user?.gamification?.streak?.longest || 0;
+  const totalDaysActive = habits.reduce((sum, habit) => sum + (habit.stats?.currentStreak || 0), 0);
 
   // Sort habits by current streak
   const habitsByStreak = [...habits].sort((a, b) =>
-    (b.streak?.current || 0) - (a.streak?.current || 0)
+    (b.stats?.currentStreak || 0) - (a.stats?.currentStreak || 0)
   );
 
   // Get habits on fire (streak > 7)
-  const onFireHabits = habits.filter(h => (h.streak?.current || 0) >= 7);
+  const onFireHabits = habits.filter(h => (h.stats?.currentStreak || 0) >= 7);
 
   // Get habits at risk (last completed > 1 day ago)
   const atRiskHabits = habits.filter(h => {
-    if (!h.lastCompleted) return false;
-    const daysSince = Math.floor((new Date() - new Date(h.lastCompleted)) / (1000 * 60 * 60 * 24));
-    return daysSince >= 1 && (h.streak?.current || 0) > 0;
+    if (!h.stats?.lastCompletedDate) return false;
+    const daysSince = Math.floor((new Date() - new Date(h.stats.lastCompletedDate)) / (1000 * 60 * 60 * 24));
+    return daysSince >= 1 && (h.stats?.currentStreak || 0) > 0;
   });
 
   if (loading) {
@@ -128,11 +128,11 @@ const StreaksPage = () => {
                       {habit.icon || '📌'}
                     </div>
                     <div className="flex-1">
-                      <p className="text-white font-medium">{habit.name}</p>
+                      <p className="text-white font-medium">{habit.title}</p>
                       <p className="text-sm text-gray-500">{habit.category}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-white">{habit.streak?.current || 0}</p>
+                      <p className="text-2xl font-bold text-white">{habit.stats?.currentStreak || 0}</p>
                       <p className="text-xs text-gray-500">days</p>
                     </div>
                   </div>
@@ -154,18 +154,18 @@ const StreaksPage = () => {
             ) : (
               <div className="space-y-3">
                 {atRiskHabits.map(habit => {
-                  const daysSince = Math.floor((new Date() - new Date(habit.lastCompleted)) / (1000 * 60 * 60 * 24));
+                  const daysSince = Math.floor((new Date() - new Date(habit.stats.lastCompletedDate)) / (1000 * 60 * 60 * 24));
                   return (
                     <div key={habit._id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all border border-yellow-500/20">
                       <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
                         {habit.icon || '📌'}
                       </div>
                       <div className="flex-1">
-                        <p className="text-white font-medium">{habit.name}</p>
+                        <p className="text-white font-medium">{habit.title}</p>
                         <p className="text-sm text-yellow-500">Not completed for {daysSince} day{daysSince !== 1 ? 's' : ''}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-gray-400">{habit.streak?.current || 0}</p>
+                        <p className="text-xl font-bold text-gray-400">{habit.stats?.currentStreak || 0}</p>
                         <p className="text-xs text-gray-500">day streak</p>
                       </div>
                     </div>
@@ -212,7 +212,7 @@ const StreaksPage = () => {
 
                   {/* Info */}
                   <div className="flex-1">
-                    <p className="text-white font-medium">{habit.name}</p>
+                    <p className="text-white font-medium">{habit.title}</p>
                     <p className="text-sm text-gray-500">{habit.category}</p>
                   </div>
 
@@ -220,18 +220,18 @@ const StreaksPage = () => {
                   <div className="text-right">
                     <div className="flex items-center gap-2">
                       <span className="text-orange-400">🔥</span>
-                      <span className="text-2xl font-bold text-white">{habit.streak?.current || 0}</span>
+                      <span className="text-2xl font-bold text-white">{habit.stats?.currentStreak || 0}</span>
                     </div>
-                    {habit.streak?.longest && habit.streak.longest > (habit.streak.current || 0) && (
-                      <p className="text-xs text-gray-500 mt-1">Best: {habit.streak.longest} days</p>
+                    {habit.stats?.longestStreak && habit.stats.longestStreak > (habit.stats.currentStreak || 0) && (
+                      <p className="text-xs text-gray-500 mt-1">Best: {habit.stats.longestStreak} days</p>
                     )}
                   </div>
 
                   {/* Completion Rate */}
-                  {habit.completionRate && (
+                  {habit.stats?.totalCompletions && (
                     <div className="text-right hidden sm:block">
-                      <p className="text-sm font-medium text-white">{Math.round(habit.completionRate)}%</p>
-                      <p className="text-xs text-gray-500">completion</p>
+                      <p className="text-sm font-medium text-white">{habit.stats.totalCompletions}</p>
+                      <p className="text-xs text-gray-500">completions</p>
                     </div>
                   )}
                 </div>
