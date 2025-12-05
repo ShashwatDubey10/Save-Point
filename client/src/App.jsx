@@ -10,6 +10,7 @@ import HabitsPage from './pages/HabitsPage';
 import StreaksPage from './pages/StreaksPage';
 import LevelsPage from './pages/LevelsPage';
 import TasksPage from './pages/TasksPage';
+import NotesPage from './pages/NotesPage';
 import CalendarPage from './pages/CalendarPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -54,6 +55,7 @@ function AppRoutes() {
       <Route path="/streaks" element={<ProtectedRoute><StreaksPage /></ProtectedRoute>} />
       <Route path="/levels" element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+      <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
