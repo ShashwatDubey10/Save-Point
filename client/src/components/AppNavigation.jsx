@@ -8,6 +8,7 @@ const AppNavigation = () => {
     { path: '/dashboard', icon: '🏠', label: 'Dashboard' },
     { path: '/habits', icon: '📚', label: 'Habits' },
     { path: '/tasks', icon: '📋', label: 'Tasks' },
+    { path: '/notes', icon: '📝', label: 'Notes' },
     { path: '/calendar', icon: '📅', label: 'Calendar' },
     { path: '/levels', icon: '🏆', label: 'Levels' },
     { path: '/streaks', icon: '🔥', label: 'Streaks' },
