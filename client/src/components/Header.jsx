@@ -15,7 +15,7 @@ const Header = () => {
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <img
-                src="../../public/SavePointHeaderLogo2.png"
+                src="/SavePointHeaderLogo2.png"
                 alt="Save Point"
                 className="h-10"
               />
