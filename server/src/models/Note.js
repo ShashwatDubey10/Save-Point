@@ -19,19 +19,27 @@ const noteSchema = new mongoose.Schema({
     maxlength: [10000, 'Content cannot exceed 10000 characters'],
     default: ''
   },
+  formattedContent: {
+    type: String,
+    maxlength: [20000, 'Formatted content cannot exceed 20000 characters'],
+    default: ''
+  },
   color: {
     type: String,
-    default: '#fef3c7', // default yellow like Google Keep
+    default: 'coral', // default coral
     enum: [
-      '#fef3c7', // yellow
-      '#fed7aa', // orange
-      '#fecaca', // red
-      '#f9a8d4', // pink
-      '#ddd6fe', // purple
-      '#bfdbfe', // blue
-      '#a7f3d0', // green
-      '#d1d5db', // gray
-      '#ffffff'  // white
+      'coral',      // soft coral/pink
+      'peach',      // warm peach
+      'sand',       // sandy beige
+      'mint',       // soft mint green
+      'sky',        // soft sky blue
+      'lavender',   // soft lavender
+      'rose',       // soft rose
+      'sage',       // sage green
+      'periwinkle', // periwinkle blue
+      'lemon',      // soft lemon
+      'default',    // clean white
+      'slate'       // soft gray
     ]
   },
   isPinned: {

@@ -30,11 +30,12 @@ const NotesPage = () => {
     try {
       setLoading(true);
       const data = await noteService.getAll(showArchived);
-      setNotes(data || []);
+      setNotes(Array.isArray(data) ? data : []);
     } catch (err) {
       setError('Failed to load notes');
-      console.error(err);
+      console.error('Error fetching notes:', err);
       toast.error('Failed to load notes');
+      setNotes([]);
     } finally {
       setLoading(false);
     }
@@ -119,12 +120,14 @@ const NotesPage = () => {
     }
   };
 
-  // Filter notes based on search query
+  // Filter notes based on search query (memoized to prevent unnecessary re-renders)
   const filteredNotes = notes.filter(note => {
+    if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
     return (
       note.title?.toLowerCase().includes(searchLower) ||
       note.content?.toLowerCase().includes(searchLower) ||
+      note.formattedContent?.toLowerCase().includes(searchLower) ||
       note.tags?.some(tag => tag.toLowerCase().includes(searchLower))
     );
   });
@@ -153,26 +156,28 @@ const NotesPage = () => {
 
       <main className="container mx-auto px-4 py-6 pb-24">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Notes</h1>
-            <p className="text-gray-400">Capture your thoughts and ideas</p>
+            <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+              📝 Notes
+            </h1>
+            <p className="text-gray-400 text-lg">Capture your thoughts with rich formatting</p>
           </div>
 
           <div className="flex gap-3">
             <button
               onClick={() => setShowArchived(!showArchived)}
-              className={`px-4 py-2 rounded-xl transition-colors font-medium ${
+              className={`px-5 py-2.5 rounded-xl transition-all font-medium shadow-lg ${
                 showArchived
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-600 text-white hover:bg-primary-500'
                   : 'glass text-gray-300 hover:bg-white/10'
               }`}
             >
-              {showArchived ? 'Show Active' : 'Show Archived'}
+              {showArchived ? '📂 Show Active' : '📦 Show Archived'}
             </button>
             <button
               onClick={handleCreateNote}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors font-medium"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-all font-medium shadow-lg hover:shadow-primary-500/50 transform hover:scale-105"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -183,23 +188,33 @@ const NotesPage = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
+        <div className="mb-8">
+          <div className="relative group">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search notes..."
-              className="w-full glass rounded-xl px-4 py-3 pl-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Search notes by title, content, or tags..."
+              className="w-full glass rounded-xl px-4 py-4 pl-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all text-lg"
             />
             <svg
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary-500 transition-colors"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
