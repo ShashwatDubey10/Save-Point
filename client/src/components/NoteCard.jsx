@@ -1,156 +1,148 @@
 import { useState } from 'react';
 
-const NoteCard = ({ note, onEdit, onDelete, onPin, onArchive, onDuplicate, onColorChange }) => {
-  const [showMenu, setShowMenu] = useState(false);
+const COLORS = {
+  coral: { bg: 'bg-[#FFB4A2]', border: 'border-[#FF9A85]' },
+  peach: { bg: 'bg-[#FFD4A3]', border: 'border-[#FFBC7A]' },
+  sand: { bg: 'bg-[#F5DEB3]', border: 'border-[#E6CF9E]' },
+  mint: { bg: 'bg-[#B5EAD7]', border: 'border-[#9DD9C3]' },
+  sky: { bg: 'bg-[#B4D7ED]', border: 'border-[#96C5E0]' },
+  lavender: { bg: 'bg-[#C7CEEA]', border: 'border-[#B0B9DD]' },
+  default: { bg: 'bg-white', border: 'border-gray-300' },
+};
 
-  const colorClasses = {
-    '#fef3c7': 'bg-yellow-100 border-yellow-200',
-    '#fed7aa': 'bg-orange-100 border-orange-200',
-    '#fecaca': 'bg-red-100 border-red-200',
-    '#f9a8d4': 'bg-pink-100 border-pink-200',
-    '#ddd6fe': 'bg-purple-100 border-purple-200',
-    '#bfdbfe': 'bg-blue-100 border-blue-200',
-    '#a7f3d0': 'bg-green-100 border-green-200',
-    '#d1d5db': 'bg-gray-100 border-gray-200',
-    '#ffffff': 'bg-white border-gray-200'
+const NoteCard = ({ note, onEdit, onDelete }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const theme = COLORS[note.color] || COLORS.coral;
+
+  const handleCardClick = () => {
+    onEdit(note);
   };
 
-  const colorClass = colorClasses[note.color] || colorClasses['#fef3c7'];
-
-  const hasContent = note.title || note.content || (note.checklist && note.checklist.length > 0);
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    onDelete(note._id);
+  };
 
   return (
     <div
-      className={`${colorClass} border rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer relative group`}
-      onClick={() => onEdit(note)}
+      className={`${theme.bg} border-2 ${theme.border} rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-xl hover:scale-[1.02] relative group`}
+      onClick={handleCardClick}
+      title="Click to edit"
     >
-      {/* Pin indicator */}
-      {note.isPinned && (
-        <div className="absolute top-2 right-2">
-          <svg className="w-4 h-4 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L11 4.323V3a1 1 0 011-1h-2z" />
-          </svg>
-        </div>
-      )}
+      {/* Edit Icon - Shows on hover */}
+      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded-full p-1.5">
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </div>
 
-      {/* Title */}
-      {note.title && (
-        <h3 className="font-semibold text-gray-900 mb-2 pr-8">{note.title}</h3>
-      )}
-
-      {/* Content */}
-      {note.content && (
-        <p className="text-gray-700 text-sm whitespace-pre-wrap break-words mb-3 line-clamp-10">
-          {note.content}
-        </p>
-      )}
-
-      {/* Checklist */}
-      {note.checklist && note.checklist.length > 0 && (
-        <div className="space-y-1 mb-3">
-          {note.checklist.slice(0, 5).map((item, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={item.checked}
-                readOnly
-                className="w-4 h-4 rounded"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <span className={`text-sm ${item.checked ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                {item.text}
-              </span>
-            </div>
-          ))}
-          {note.checklist.length > 5 && (
-            <p className="text-xs text-gray-500 mt-1">+{note.checklist.length - 5} more items</p>
-          )}
-        </div>
-      )}
-
-      {/* Tags */}
-      {note.tags && note.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
-          {note.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="text-xs bg-gray-700 text-white px-2 py-1 rounded-full"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Action buttons - shown on hover */}
-      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onPin(note._id);
-          }}
-          className="p-1.5 hover:bg-gray-200 rounded-full transition-colors"
-          title={note.isPinned ? 'Unpin' : 'Pin'}
-        >
-          <svg className="w-4 h-4 text-gray-700" fill={note.isPinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
-        </button>
-
+      {/* Menu Button */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={(e) => {
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="p-1.5 hover:bg-gray-200 rounded-full transition-colors relative"
-          title="More options"
+          className="p-1.5 hover:bg-gray-900/10 rounded-full transition-colors"
         >
-          <svg className="w-4 h-4 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
           </svg>
-
-          {/* Dropdown menu */}
-          {showMenu && (
-            <div className="absolute right-0 bottom-full mb-1 bg-white rounded-lg shadow-lg py-1 w-40 z-10 border border-gray-200">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDuplicate(note._id);
-                  setShowMenu(false);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700"
-              >
-                Duplicate
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onArchive(note._id);
-                  setShowMenu(false);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700"
-              >
-                {note.isArchived ? 'Unarchive' : 'Archive'}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(note._id);
-                  setShowMenu(false);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-red-50 text-sm text-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          )}
         </button>
+
+        {/* Dropdown Menu */}
+        {showMenu && (
+          <div className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-2xl py-2 w-40 z-10 border-2 border-gray-200">
+            <button
+              onClick={handleDeleteClick}
+              className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-sm text-red-600 font-medium flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Empty note placeholder */}
-      {!hasContent && (
-        <p className="text-gray-400 text-sm italic">Empty note</p>
+      {/* Title */}
+      {note.title && (
+        <h3 className="font-bold text-gray-900 mb-2 pr-8 text-lg line-clamp-2">
+          {note.title}
+        </h3>
       )}
+
+      {/* Content/Description */}
+      {(note.formattedContent || note.content) && (
+        <div
+          className="text-gray-700 text-sm break-words line-clamp-6 note-content"
+          dangerouslySetInnerHTML={{ __html: note.formattedContent || note.content }}
+        />
+      )}
+
+      {/* Empty state */}
+      {!note.title && !note.content && !note.formattedContent && (
+        <p className="text-gray-500 text-sm italic">Empty note</p>
+      )}
+
+      {/* Inline styles for rich text content */}
+      <style jsx>{`
+        .note-content {
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+        }
+
+        .note-content h1 {
+          font-size: 1.5em;
+          font-weight: bold;
+          margin: 0.5em 0;
+        }
+
+        .note-content h2 {
+          font-size: 1.25em;
+          font-weight: bold;
+          margin: 0.5em 0;
+        }
+
+        .note-content h3 {
+          font-size: 1.1em;
+          font-weight: bold;
+          margin: 0.5em 0;
+        }
+
+        .note-content ul, .note-content ol {
+          margin-left: 1.5em;
+          margin-top: 0.25em;
+          margin-bottom: 0.25em;
+        }
+
+        .note-content li {
+          margin: 0.2em 0;
+        }
+
+        .note-content strong, .note-content b {
+          font-weight: bold;
+        }
+
+        .note-content em, .note-content i {
+          font-style: italic;
+        }
+
+        .note-content u {
+          text-decoration: underline;
+        }
+
+        .note-content strike {
+          text-decoration: line-through;
+        }
+
+        .note-content p {
+          margin: 0.25em 0;
+        }
+      `}</style>
     </div>
   );
 };
