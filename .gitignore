@@ -49,3 +49,6 @@ Thumbs.db
 # Misc
 .cache/
 .parcel-cache/
+
+# Documentation
+documents/
