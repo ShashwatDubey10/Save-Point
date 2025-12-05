@@ -72,6 +72,16 @@ const taskSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  xpAwarded: {
+    start: {
+      type: Boolean,
+      default: false
+    },
+    completion: {
+      type: Boolean,
+      default: false
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

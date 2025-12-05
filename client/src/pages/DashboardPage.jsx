@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
+import { taskService } from '../services/taskService';
 import { analyticsService } from '../services/analyticsService';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
@@ -13,6 +14,7 @@ import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
 const DashboardPage = () => {
   const { user, refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,17 +31,23 @@ const DashboardPage = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch both habits and weekly summary
-      const [habitsResponse, weeklyResponse] = await Promise.all([
+      // Fetch habits, tasks, and weekly summary
+      const [habitsResponse, tasksResponse, weeklyResponse] = await Promise.all([
         habitService.getAll(),
+        taskService.getAll(), // Fetch all tasks, filter on frontend
         analyticsService.getWeeklySummary()
       ]);
 
+      // taskService.getAll() already returns the data array (response.data.data)
+      // Filter out completed tasks on frontend
+      const activeTasks = (tasksResponse || []).filter(task => task.status !== 'completed');
+
       setHabits(habitsResponse.data || []);
+      setTasks(activeTasks);
       setWeeklyData(weeklyResponse.data);
     } catch (err) {
       setError('Failed to load dashboard data');
-      console.error(err);
+      console.error('Dashboard load error:', err);
     } finally {
       setLoading(false);
     }
@@ -55,7 +63,44 @@ const DashboardPage = () => {
     }
   };
 
+  // Check if habit is completed today (same as HabitsPage)
+  const isCompletedToday = (habit) => {
+    if (!habit.completions || habit.completions.length === 0) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastCompletionData = habit.completions[habit.completions.length - 1];
+    const lastCompletion = new Date(lastCompletionData.date);
+    lastCompletion.setHours(0, 0, 0, 0);
+
+    return lastCompletion.getTime() === today.getTime();
+  };
+
   const toggleHabit = async (id, completed) => {
+    // Optimistic UI update
+    setHabits(prevHabits =>
+      prevHabits.map(habit => {
+        if (habit._id === id) {
+          const updatedHabit = { ...habit };
+          if (completed) {
+            // Remove last completion
+            updatedHabit.completions = habit.completions.slice(0, -1);
+          } else {
+            // Add completion for today
+            updatedHabit.completions = [
+              ...(habit.completions || []),
+              { date: new Date(), note: '', mood: null }
+            ];
+          }
+          return updatedHabit;
+        }
+        return habit;
+      })
+    );
+
     try {
       if (completed) {
         await habitService.uncomplete(id);
@@ -65,15 +110,20 @@ const DashboardPage = () => {
         const points = response.data?.points?.earned || 10;
         toast.success(`Habit completed! +${points} XP earned 🎉`);
       }
-      // Refresh dashboard data and user info to update XP and level
-      await fetchDashboardData();
-      await refreshUser();
+      // Refresh data and user info to get accurate server state
+      await Promise.all([
+        fetchDashboardData(),
+        refreshUser()
+      ]);
     } catch (err) {
       console.error('Failed to toggle habit:', err);
-      toast.error('Failed to update habit. Please try again.');
-      // Refresh anyway to ensure UI is in sync
+
+      // Show specific error message if available
+      const errorMessage = err.response?.data?.message || 'Failed to update habit. Please try again.';
+      toast.error(errorMessage);
+
+      // Refresh to revert optimistic update and ensure UI is in sync
       await fetchDashboardData();
-      await refreshUser();
     }
   };
 
@@ -138,18 +188,6 @@ const DashboardPage = () => {
   };
 
 
-  // Check if habit is completed today by looking at the last completion date
-  const isCompletedToday = (habit) => {
-    if (!habit.completions || habit.completions.length === 0) return false;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
-    lastCompletion.setHours(0, 0, 0, 0);
-
-    return lastCompletion.getTime() === today.getTime();
-  };
 
   const completedCount = habits.filter(h => isCompletedToday(h)).length;
   const totalXP = user?.gamification?.points || 0;
@@ -207,6 +245,7 @@ const DashboardPage = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
           {/* Level Card */}
           <Link to="/levels" className="glass rounded-2xl p-5 hover:bg-white/10 transition-all cursor-pointer">
             <div className="flex items-center gap-3 mb-3">
@@ -272,7 +311,8 @@ const DashboardPage = () => {
           <MonthlyHabitTracker habits={habits} />
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        {/* Habits and Sidebar Row */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
           {/* Habits List */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
@@ -307,21 +347,23 @@ const DashboardPage = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {habits.map((habit) => (
+                {habits.map((habit) => {
+                  const completed = isCompletedToday(habit);
+                  return (
                   <div
                     key={habit._id}
                     className={`glass rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer hover:bg-white/10 ${
-                      isCompletedToday(habit) ? 'border-green-500/30' : ''
+                      completed ? 'border border-green-500/30' : ''
                     }`}
-                    onClick={() => toggleHabit(habit._id, isCompletedToday(habit))}
+                    onClick={() => toggleHabit(habit._id, completed)}
                   >
                     {/* Checkbox */}
                     <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      isCompletedToday(habit)
+                      completed
                         ? 'bg-green-500 border-green-500'
                         : 'border-white/30 hover:border-primary-500'
                     }`}>
-                      {isCompletedToday(habit) && (
+                      {completed && (
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
@@ -336,7 +378,7 @@ const DashboardPage = () => {
                     {/* Info */}
                     <div className="flex-1">
                       <h3 className={`font-medium transition-all ${
-                        isCompletedToday(habit) ? 'text-gray-400 line-through' : 'text-white'
+                        completed ? 'text-gray-400 line-through' : 'text-white'
                       }`}>
                         {habit.title || habit.name}
                       </h3>
@@ -376,7 +418,8 @@ const DashboardPage = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -449,8 +492,87 @@ const DashboardPage = () => {
                 )}
               </div>
             </div>
-
           </div>
+        </div>
+
+        {/* Tasks Section - Full Width */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-white">Upcoming Tasks</h2>
+              <Link to="/tasks" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+                View All →
+              </Link>
+            </div>
+          </div>
+
+          {tasks.length === 0 ? (
+            <div className="glass rounded-xl p-6 text-center">
+              <div className="text-3xl mb-2">📋</div>
+              <p className="text-gray-400">No active tasks</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tasks
+                .sort((a, b) => {
+                  // Sort by due date (earliest first)
+                  if (a.dueDate && b.dueDate) {
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                  }
+                  if (a.dueDate) return -1;
+                  if (b.dueDate) return 1;
+                  return 0;
+                })
+                .slice(0, 6)
+                .map((task) => {
+                  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                  const isOverdue = dueDate && dueDate < new Date();
+                  const daysUntilDue = dueDate ? Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
+
+                  return (
+                    <Link
+                      key={task._id}
+                      to="/tasks"
+                      className={`glass rounded-xl p-4 flex items-center gap-4 hover:bg-white/10 transition-all ${
+                        isOverdue ? 'border border-red-500/30' : ''
+                      }`}
+                    >
+                      {/* Priority Dot */}
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                        task.priority === 'urgent' ? 'bg-red-500' :
+                        task.priority === 'high' ? 'bg-orange-500' :
+                        task.priority === 'medium' ? 'bg-yellow-500' :
+                        'bg-blue-500'
+                      }`} />
+
+                      {/* Task Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">{task.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-500 capitalize">{task.category}</p>
+                          {dueDate && (
+                            <>
+                              <span className="text-gray-600">•</span>
+                              <p className={`text-xs font-medium ${
+                                isOverdue ? 'text-red-400' :
+                                daysUntilDue === 0 ? 'text-orange-400' :
+                                daysUntilDue <= 2 ? 'text-yellow-400' :
+                                'text-gray-400'
+                              }`}>
+                                {isOverdue ? 'Overdue' :
+                                 daysUntilDue === 0 ? 'Today' :
+                                 daysUntilDue === 1 ? 'Tomorrow' :
+                                 `${daysUntilDue}d`}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </main>
 

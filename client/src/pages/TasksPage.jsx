@@ -7,11 +7,16 @@ import TaskModal from '../components/TaskModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
+import LevelUpModal from '../components/LevelUpModal';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { KanbanColumn, DraggableTaskCard } from '../components/KanbanBoard';
 
 const TasksPage = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+
+  // Level up modal state
+  const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
+  const [levelUpData, setLevelUpData] = useState({ newLevel: 1, previousLevel: 1 });
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -112,8 +117,65 @@ const TasksPage = () => {
 
   const handleToggleTask = async (taskId) => {
     try {
-      await taskService.toggleStatus(taskId);
-      toast.success('Task status updated!');
+      const response = await taskService.toggleStatus(taskId);
+
+      // Show detailed feedback if XP was awarded
+      if (response.points) {
+        const { earned, type, breakdown, priority, leveledUp, previousLevel, level } = response.points;
+
+        if (type === 'start') {
+          // XP for starting a task
+          const priorityEmoji = {
+            low: '🔵',
+            medium: '🟡',
+            high: '🟠',
+            urgent: '🔴'
+          };
+          toast.success(
+            `⚡ Task started! +${earned} XP ${priorityEmoji[priority] || ''}`,
+            { duration: 4000 }
+          );
+        } else if (type === 'complete') {
+          // XP for completing a task
+          if (breakdown.status === 'early') {
+            toast.success(
+              `🎉 Task completed ${breakdown.daysEarly} day${breakdown.daysEarly > 1 ? 's' : ''} early! +${earned} XP (+${breakdown.base} base, +${breakdown.deadlineModifier} early bonus)`,
+              { duration: 5000 }
+            );
+          } else if (breakdown.status === 'on_time') {
+            toast.success(
+              `✅ Task completed on time! +${earned} XP (+${breakdown.base} base, +${breakdown.deadlineModifier} on-time bonus)`,
+              { duration: 5000 }
+            );
+          } else if (breakdown.status === 'late') {
+            if (earned > 0) {
+              toast(
+                `⚠️ Task completed ${breakdown.daysLate} day${breakdown.daysLate > 1 ? 's' : ''} late. +${earned} XP (+${breakdown.base} base, ${breakdown.deadlineModifier} late penalty)`,
+                { icon: '⚠️', duration: 5000 }
+              );
+            } else {
+              toast.error(
+                `❌ Task completed ${breakdown.daysLate} day${breakdown.daysLate > 1 ? 's' : ''} late. No XP awarded due to delay.`,
+                { duration: 5000 }
+              );
+            }
+          } else {
+            toast.success(`✅ Task completed! +${earned} XP`, { duration: 4000 });
+          }
+        }
+
+        // Show level-up animation if user leveled up
+        if (leveledUp) {
+          setLevelUpData({ newLevel: level, previousLevel });
+          setIsLevelUpModalOpen(true);
+        }
+
+        // Refresh user data to update XP in header
+        await refreshUser();
+      } else {
+        toast.success('Task status updated!');
+      }
+
       fetchTasks();
     } catch (err) {
       console.error('Failed to toggle task:', err);
@@ -154,8 +216,65 @@ const TasksPage = () => {
     // Update task status
     if (newStatus === 'todo' || newStatus === 'in-progress' || newStatus === 'completed') {
       try {
-        await taskService.updateStatus(taskId, newStatus);
-        toast.success(`Task moved to ${newStatus === 'in-progress' ? 'In Progress' : newStatus === 'todo' ? 'To Do' : 'Completed'}!`);
+        const response = await taskService.updateStatus(taskId, newStatus);
+
+        // Show detailed feedback if XP was awarded
+        if (response.points) {
+          const { earned, type, breakdown, priority, leveledUp, previousLevel, level } = response.points;
+
+          if (type === 'start') {
+            // XP for starting a task
+            const priorityEmoji = {
+              low: '🔵',
+              medium: '🟡',
+              high: '🟠',
+              urgent: '🔴'
+            };
+            toast.success(
+              `⚡ Task started! +${earned} XP ${priorityEmoji[priority] || ''}`,
+              { duration: 4000 }
+            );
+          } else if (type === 'complete') {
+            // XP for completing a task
+            if (breakdown.status === 'early') {
+              toast.success(
+                `🎉 Task completed ${breakdown.daysEarly} day${breakdown.daysEarly > 1 ? 's' : ''} early! +${earned} XP (+${breakdown.base} base, +${breakdown.deadlineModifier} early bonus)`,
+                { duration: 5000 }
+              );
+            } else if (breakdown.status === 'on_time') {
+              toast.success(
+                `✅ Task completed on time! +${earned} XP (+${breakdown.base} base, +${breakdown.deadlineModifier} on-time bonus)`,
+                { duration: 5000 }
+              );
+            } else if (breakdown.status === 'late') {
+              if (earned > 0) {
+                toast(
+                  `⚠️ Task completed ${breakdown.daysLate} day${breakdown.daysLate > 1 ? 's' : ''} late. +${earned} XP (+${breakdown.base} base, ${breakdown.deadlineModifier} late penalty)`,
+                  { icon: '⚠️', duration: 5000 }
+                );
+              } else {
+                toast.error(
+                  `❌ Task completed ${breakdown.daysLate} day${breakdown.daysLate > 1 ? 's' : ''} late. No XP awarded due to delay.`,
+                  { duration: 5000 }
+                );
+              }
+            } else {
+              toast.success(`✅ Task completed! +${earned} XP`, { duration: 4000 });
+            }
+          }
+
+          // Show level-up animation if user leveled up
+          if (leveledUp) {
+            setLevelUpData({ newLevel: level, previousLevel });
+            setIsLevelUpModalOpen(true);
+          }
+
+          // Refresh user data to update XP in header
+          await refreshUser();
+        } else {
+          toast.success(`Task moved to ${newStatus === 'in-progress' ? 'In Progress' : newStatus === 'todo' ? 'To Do' : 'Completed'}!`);
+        }
+
         fetchTasks();
       } catch (err) {
         console.error('Failed to update task status:', err);
@@ -550,6 +669,13 @@ const TasksPage = () => {
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}
+      />
+
+      <LevelUpModal
+        isOpen={isLevelUpModalOpen}
+        onClose={() => setIsLevelUpModalOpen(false)}
+        newLevel={levelUpData.newLevel}
+        previousLevel={levelUpData.previousLevel}
       />
     </div>
   );
