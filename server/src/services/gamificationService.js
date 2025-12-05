@@ -22,6 +22,23 @@ class GamificationService {
     return Math.round((basePoints + streakBonus) * categoryMultiplier);
   }
 
+  calculateTaskStartPoints(task) {
+    // Points for starting a task (moving to in-progress)
+    const priorityPoints = {
+      low: 2,
+      medium: 3,
+      high: 5,
+      urgent: 7
+    };
+
+    const points = priorityPoints[task.priority] || 3;
+
+    return {
+      points,
+      priority: task.priority
+    };
+  }
+
   calculateTaskPoints(task) {
     const priorityPoints = {
       low: 5,
@@ -32,17 +49,50 @@ class GamificationService {
 
     const basePoints = priorityPoints[task.priority] || 10;
 
-    // Bonus for completing before due date
-    let timeBonus = 0;
-    if (task.dueDate) {
+    // Calculate deadline-based bonus/penalty
+    let deadlineModifier = 0;
+    let daysEarly = 0;
+    let daysLate = 0;
+    let deadlineStatus = 'no_deadline';
+
+    if (task.dueDate && task.status === 'completed') {
       const now = new Date();
-      const daysBeforeDue = Math.floor((task.dueDate - now) / (1000 * 60 * 60 * 24));
-      if (daysBeforeDue > 0) {
-        timeBonus = Math.min(daysBeforeDue * 2, 10);
+      const dueDate = new Date(task.dueDate);
+
+      // Calculate difference in days
+      const timeDiff = dueDate - now;
+      const daysDifference = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+      if (daysDifference > 0) {
+        // Completed EARLY - BONUS POINTS
+        // 5 points per day early, max 50 bonus points
+        daysEarly = daysDifference;
+        deadlineModifier = Math.min(daysDifference * 5, 50);
+        deadlineStatus = 'early';
+      } else if (daysDifference === 0) {
+        // Completed ON TIME (same day as due date) - BONUS POINTS
+        deadlineModifier = 15; // Flat bonus for completing on deadline day
+        deadlineStatus = 'on_time';
+      } else {
+        // Completed LATE - PENALTY POINTS
+        // -3 points per day late
+        daysLate = Math.abs(daysDifference);
+        deadlineModifier = -(daysLate * 3);
+        deadlineStatus = 'late';
       }
     }
 
-    return basePoints + timeBonus;
+    // Calculate final points (ensure minimum of 0 points)
+    const totalPoints = Math.max(0, basePoints + deadlineModifier);
+
+    return {
+      basePoints,
+      deadlineModifier,
+      totalPoints,
+      daysEarly,
+      daysLate,
+      deadlineStatus
+    };
   }
 
   // Level calculation

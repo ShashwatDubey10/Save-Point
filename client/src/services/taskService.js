@@ -42,13 +42,13 @@ export const taskService = {
   // Toggle task completion status
   async toggleStatus(id) {
     const response = await api.post(`/tasks/${id}/toggle`);
-    return response.data.data;
+    return response.data; // Return full response including points data
   },
 
   // Update task status directly
   async updateStatus(id, status) {
     const response = await api.put(`/tasks/${id}`, { status });
-    return response.data.data;
+    return response.data; // Return full response including points data
   },
 
   // Toggle subtask completion

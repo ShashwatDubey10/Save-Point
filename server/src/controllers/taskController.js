@@ -93,10 +93,80 @@ export const updateTask = asyncHandler(async (req, res) => {
     });
   }
 
+  const previousStatus = task.status;
+  const wasCompleted = task.status === 'completed';
+  const willBeCompleted = req.body.status === 'completed';
+  const willBeInProgress = req.body.status === 'in-progress';
+
   task = await Task.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true
   });
+
+  const user = await User.findById(req.user.id);
+  const previousLevel = user.gamification.level;
+  let pointsResponse = null;
+
+  // Award XP if task was just started (moved to in-progress) - ONLY if not already awarded
+  if (previousStatus === 'todo' && willBeInProgress && !task.xpAwarded.start) {
+    const startPointsData = gamificationService.calculateTaskStartPoints(task);
+    user.addPoints(startPointsData.points);
+    await user.save();
+
+    // Mark start XP as awarded
+    task.xpAwarded.start = true;
+    await task.save();
+
+    const leveledUp = user.gamification.level > previousLevel;
+
+    pointsResponse = {
+      earned: startPointsData.points,
+      type: 'start',
+      priority: startPointsData.priority,
+      total: user.gamification.points,
+      level: user.gamification.level,
+      leveledUp,
+      previousLevel
+    };
+  }
+
+  // Award XP if task was just completed - ONLY if not already awarded
+  if (!wasCompleted && willBeCompleted && !task.xpAwarded.completion) {
+    const pointsData = gamificationService.calculateTaskPoints(task);
+
+    user.addPoints(pointsData.totalPoints);
+    await user.save();
+
+    // Mark completion XP as awarded
+    task.xpAwarded.completion = true;
+    await task.save();
+
+    const leveledUp = user.gamification.level > previousLevel;
+
+    pointsResponse = {
+      earned: pointsData.totalPoints,
+      type: 'complete',
+      breakdown: {
+        base: pointsData.basePoints,
+        deadlineModifier: pointsData.deadlineModifier,
+        daysEarly: pointsData.daysEarly,
+        daysLate: pointsData.daysLate,
+        status: pointsData.deadlineStatus
+      },
+      total: user.gamification.points,
+      level: user.gamification.level,
+      leveledUp,
+      previousLevel
+    };
+  }
+
+  if (pointsResponse) {
+    return res.status(200).json({
+      success: true,
+      data: task,
+      points: pointsResponse
+    });
+  }
 
   res.status(200).json({
     success: true,
@@ -154,25 +224,74 @@ export const toggleTaskStatus = asyncHandler(async (req, res) => {
     });
   }
 
+  const previousStatus = task.status;
   const wasCompleted = task.status === 'completed';
   task.toggleStatus();
   await task.save();
 
-  // Award points if task was just completed
-  if (!wasCompleted && task.status === 'completed') {
-    const user = await User.findById(req.user.id);
-    const points = gamificationService.calculateTaskPoints(task);
-    user.addPoints(points);
+  const user = await User.findById(req.user.id);
+  const previousLevel = user.gamification.level;
+  let pointsResponse = null;
+
+  // Award XP if task was just started (moved to in-progress) - ONLY if not already awarded
+  if (previousStatus === 'todo' && task.status === 'in-progress' && !task.xpAwarded.start) {
+    const startPointsData = gamificationService.calculateTaskStartPoints(task);
+    user.addPoints(startPointsData.points);
     await user.save();
 
+    // Mark start XP as awarded
+    task.xpAwarded.start = true;
+    await task.save();
+
+    const leveledUp = user.gamification.level > previousLevel;
+
+    pointsResponse = {
+      earned: startPointsData.points,
+      type: 'start',
+      priority: startPointsData.priority,
+      total: user.gamification.points,
+      level: user.gamification.level,
+      leveledUp,
+      previousLevel
+    };
+  }
+
+  // Award XP if task was just completed - ONLY if not already awarded
+  if (!wasCompleted && task.status === 'completed' && !task.xpAwarded.completion) {
+    const pointsData = gamificationService.calculateTaskPoints(task);
+
+    // Award the calculated XP
+    user.addPoints(pointsData.totalPoints);
+    await user.save();
+
+    // Mark completion XP as awarded
+    task.xpAwarded.completion = true;
+    await task.save();
+
+    const leveledUp = user.gamification.level > previousLevel;
+
+    pointsResponse = {
+      earned: pointsData.totalPoints,
+      type: 'complete',
+      breakdown: {
+        base: pointsData.basePoints,
+        deadlineModifier: pointsData.deadlineModifier,
+        daysEarly: pointsData.daysEarly,
+        daysLate: pointsData.daysLate,
+        status: pointsData.deadlineStatus
+      },
+      total: user.gamification.points,
+      level: user.gamification.level,
+      leveledUp,
+      previousLevel
+    };
+  }
+
+  if (pointsResponse) {
     return res.status(200).json({
       success: true,
       data: task,
-      points: {
-        earned: points,
-        total: user.gamification.points,
-        level: user.gamification.level
-      }
+      points: pointsResponse
     });
   }
 
