@@ -40,4 +40,9 @@ export const habitService = {
     const response = await api.get('/habits/stats');
     return response.data;
   },
+
+  async reorder(habitIds) {
+    const response = await api.put('/habits/reorder', { habitIds });
+    return response.data;
+  },
 };

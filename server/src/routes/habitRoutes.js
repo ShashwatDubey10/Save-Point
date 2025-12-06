@@ -8,7 +8,8 @@ import {
   completeHabit,
   uncompleteHabit,
   getHabitStats,
-  getHabitHistory
+  getHabitHistory,
+  reorderHabits
 } from '../controllers/habitController.js';
 import { protect } from '../middleware/auth.js';
 import {
@@ -25,6 +26,9 @@ router.use(protect);
 
 // Stats route (must be before /:id)
 router.get('/stats', getHabitStats);
+
+// Reorder route (must be before /:id)
+router.put('/reorder', reorderHabits);
 
 // CRUD routes
 router.route('/')

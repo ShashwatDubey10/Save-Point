@@ -87,6 +87,10 @@ const habitSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  order: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -102,6 +106,7 @@ const habitSchema = new mongoose.Schema({
 // Index for efficient queries
 habitSchema.index({ user: 1, isActive: 1 });
 habitSchema.index({ user: 1, category: 1 });
+habitSchema.index({ user: 1, order: 1 });
 
 // Pre-save hook to ensure stats are initialized
 habitSchema.pre('save', function(next) {

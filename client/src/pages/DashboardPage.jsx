@@ -10,6 +10,7 @@ import AppNavigation from '../components/AppNavigation';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
+import DraggableHabitList from '../components/DraggableHabitList';
 
 const DashboardPage = () => {
   const { user, refreshUser } = useAuth();
@@ -191,6 +192,26 @@ const DashboardPage = () => {
     }
   };
 
+  // Reorder habits
+  const handleReorder = async (reorderedHabits) => {
+    // Optimistically update UI
+    setHabits(reorderedHabits);
+
+    try {
+      // Extract habit IDs in new order
+      const habitIds = reorderedHabits.map(habit => habit._id);
+
+      // Persist order to backend
+      await habitService.reorder(habitIds);
+    } catch (err) {
+      console.error('Failed to reorder habits:', err);
+      toast.error('Failed to save habit order. Please try again.');
+
+      // Revert on error
+      await fetchHabits();
+    }
+  };
+
 
 
   const completedCount = habits.filter(h => isCompletedToday(h)).length;
@@ -226,8 +247,8 @@ const DashboardPage = () => {
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content */}
-      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* Main Content - Mobile-first padding */}
+      <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
@@ -350,81 +371,14 @@ const DashboardPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {habits.map((habit) => {
-                  const completed = isCompletedToday(habit);
-                  return (
-                  <div
-                    key={habit._id}
-                    className={`glass rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer hover:bg-white/10 ${
-                      completed ? 'border border-green-500/30' : ''
-                    }`}
-                    onClick={() => toggleHabit(habit._id, completed)}
-                  >
-                    {/* Checkbox */}
-                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      completed
-                        ? 'bg-green-500 border-green-500'
-                        : 'border-white/30 hover:border-primary-500'
-                    }`}>
-                      {completed && (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
-                      {habit.icon || '📌'}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1">
-                      <h3 className={`font-medium transition-all ${
-                        completed ? 'text-gray-400 line-through' : 'text-white'
-                      }`}>
-                        {habit.title || habit.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
-                    </div>
-
-                    {/* Streak */}
-                    <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
-                      <span className="text-orange-400">🔥</span>
-                      <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
-                    </div>
-
-                    {/* XP */}
-                    <div className="text-primary-400 font-medium">
-                      +10 XP
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => handleEditHabit(habit, e)}
-                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                        title="Edit habit"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteClick(habit, e)}
-                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
-                        title="Delete habit"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+              <DraggableHabitList
+                habits={habits}
+                onReorder={handleReorder}
+                onToggle={toggleHabit}
+                onEdit={handleEditHabit}
+                onDelete={handleDeleteClick}
+                isCompletedToday={isCompletedToday}
+              />
             )}
           </div>
 

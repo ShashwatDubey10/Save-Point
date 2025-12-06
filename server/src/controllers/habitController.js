@@ -19,7 +19,7 @@ export const getHabits = asyncHandler(async (req, res) => {
     filter.isActive = isActive === 'true';
   }
 
-  const habits = await Habit.find(filter).sort({ createdAt: -1 });
+  const habits = await Habit.find(filter).sort({ order: 1, createdAt: -1 });
 
   res.status(200).json({
     success: true,
@@ -335,5 +335,48 @@ export const getHabitHistory = asyncHandler(async (req, res) => {
     success: true,
     count: completions.length,
     data: completions
+  });
+});
+
+// @desc    Reorder habits
+// @route   PUT /api/habits/reorder
+// @access  Private
+export const reorderHabits = asyncHandler(async (req, res) => {
+  const { habitIds } = req.body;
+
+  if (!habitIds || !Array.isArray(habitIds)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide an array of habit IDs'
+    });
+  }
+
+  // Verify all habits belong to the user
+  const habits = await Habit.find({
+    _id: { $in: habitIds },
+    user: req.user.id
+  });
+
+  if (habits.length !== habitIds.length) {
+    return res.status(403).json({
+      success: false,
+      message: 'One or more habits not found or unauthorized'
+    });
+  }
+
+  // Update order for each habit
+  const updatePromises = habitIds.map((habitId, index) =>
+    Habit.findByIdAndUpdate(
+      habitId,
+      { order: index },
+      { new: true }
+    )
+  );
+
+  const updatedHabits = await Promise.all(updatePromises);
+
+  res.status(200).json({
+    success: true,
+    data: updatedHabits
   });
 });

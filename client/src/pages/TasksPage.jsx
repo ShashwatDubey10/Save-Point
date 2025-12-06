@@ -8,8 +8,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 import LevelUpModal from '../components/LevelUpModal';
-import { DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { KanbanColumn, DraggableTaskCard } from '../components/KanbanBoard';
+import { KanbanBoard } from '../components/KanbanBoard';
 
 const TasksPage = () => {
   const { user, refreshUser } = useAuth();
@@ -29,23 +28,6 @@ const TasksPage = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
-
-  // Drag and drop state - with touch support for mobile
-  const [activeId, setActiveId] = useState(null);
-  const [activeTask, setActiveTask] = useState(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5, // Small movement threshold
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 100, // Quick response on mobile
-        tolerance: 8,
-      },
-    })
-  );
 
   useEffect(() => {
     fetchTasks();
@@ -189,33 +171,11 @@ const TasksPage = () => {
     }
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (event) => {
-    const taskId = event.active.id;
-    setActiveId(taskId);
-    const task = tasks.find(t => t._id === taskId);
-    setActiveTask(task);
-  };
-
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    setActiveId(null);
-    setActiveTask(null);
-
-    if (!over) {
-      return;
-    }
-
-    const taskId = active.id;
+  // Handle task move between columns
+  const handleTaskMove = async (taskId, newStatus) => {
     const currentTask = tasks.find(t => t._id === taskId);
 
-    if (!currentTask) {
-      return;
-    }
-
-    // Check if dropped on a different status column
-    const newStatus = over.id;
-    if (newStatus === currentTask.status) {
+    if (!currentTask || currentTask.status === newStatus) {
       return; // No change needed
     }
 
@@ -288,18 +248,6 @@ const TasksPage = () => {
         setError('Failed to move task');
       }
     }
-  };
-
-  const handleDragCancel = () => {
-    setActiveId(null);
-    setActiveTask(null);
-  };
-
-  // Group tasks by status for board view
-  const tasksByStatus = {
-    todo: tasks.filter(t => t.status === 'todo'),
-    'in-progress': tasks.filter(t => t.status === 'in-progress'),
-    completed: tasks.filter(t => t.status === 'completed')
   };
 
   const getPriorityColor = (priority) => {
@@ -583,87 +531,19 @@ const TasksPage = () => {
             ))}
           </div>
         ) : (
-          /* Board View with Drag & Drop - Stacked on mobile, horizontal on desktop */
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-          >
-            {/* Mobile: Stack vertically, Desktop: Horizontal layout */}
-            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
-              <KanbanColumn
-                status="todo"
-                title="To Do"
-                tasks={tasksByStatus.todo}
-                onEdit={(task) => {
-                  setEditingTask(task);
-                  setIsTaskModalOpen(true);
-                }}
-                onDelete={(task) => {
-                  setTaskToDelete(task);
-                  setIsDeleteModalOpen(true);
-                }}
-                icon="📝"
-                color="text-gray-400 bg-gray-500/10"
-              />
-
-              <KanbanColumn
-                status="in-progress"
-                title="In Progress"
-                tasks={tasksByStatus['in-progress']}
-                onEdit={(task) => {
-                  setEditingTask(task);
-                  setIsTaskModalOpen(true);
-                }}
-                onDelete={(task) => {
-                  setTaskToDelete(task);
-                  setIsDeleteModalOpen(true);
-                }}
-                icon="⚡"
-                color="text-primary-400 bg-primary-500/10"
-              />
-
-              <KanbanColumn
-                status="completed"
-                title="Completed"
-                tasks={tasksByStatus.completed}
-                onEdit={(task) => {
-                  setEditingTask(task);
-                  setIsTaskModalOpen(true);
-                }}
-                onDelete={(task) => {
-                  setTaskToDelete(task);
-                  setIsDeleteModalOpen(true);
-                }}
-                icon="✅"
-                color="text-green-400 bg-green-500/10"
-              />
-            </div>
-
-            <DragOverlay
-              dropAnimation={{
-                duration: 200,
-                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-              }}
-            >
-              {activeTask ? (
-                <div className="rotate-2 scale-105 opacity-90">
-                  <div className="glass rounded-xl p-3 sm:p-4 shadow-2xl border-2 border-primary-500">
-                    <div className="flex items-start gap-2">
-                      <div className="w-8 h-8 shrink-0 rounded-lg bg-primary-500/20 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-white font-medium flex-1 text-sm sm:text-base">{activeTask.title}</h3>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+          /* Board View with Custom Drag & Drop - Works on Desktop & Mobile */
+          <KanbanBoard
+            tasks={tasks}
+            onTaskMove={handleTaskMove}
+            onEdit={(task) => {
+              setEditingTask(task);
+              setIsTaskModalOpen(true);
+            }}
+            onDelete={(task) => {
+              setTaskToDelete(task);
+              setIsDeleteModalOpen(true);
+            }}
+          />
         )}
       </main>
 
