@@ -13,4 +13,27 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Enable minification with esbuild (faster than terser)
+    minify: 'esbuild',
+    // Chunk splitting strategy
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor libraries into separate chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'dnd-vendor': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'ui-vendor': ['react-hot-toast', 'axios'],
+        },
+      },
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+  },
+  // Performance optimizations
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+  },
 })

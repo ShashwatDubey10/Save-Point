@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 
-const MonthlyHabitTracker = ({ habits = [] }) => {
+const MonthlyHabitTracker = memo(({ habits = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState({
     completionRate: 0,
@@ -38,8 +38,8 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
   const monthName = monthNames[currentDate.getMonth()];
   const year = currentDate.getFullYear();
 
-  // Calculate completion status for each habit on each day
-  const getCompletionStatus = (habit, day) => {
+  // Memoize completion status calculations
+  const getCompletionStatus = useMemo(() => (habit, day) => {
     const targetDate = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
@@ -65,9 +65,9 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
     });
 
     return completion ? 1 : 0;
-  };
+  }, [currentDate]);
 
-  const getStatusColor = (status, day, habit) => {
+  const getStatusColor = useMemo(() => (status, day, habit) => {
     // Check if habit existed on this day
     const targetDate = new Date(
       currentDate.getFullYear(),
@@ -106,7 +106,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
 
     // Missed (past days)
     return 'bg-rose-500/70 cursor-pointer hover:scale-110';
-  };
+  }, [currentDate, currentDay, isCurrentMonth]);
 
   // Calculate stats
   useEffect(() => {
@@ -356,6 +356,8 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
       </div>
     </div>
   );
-};
+});
+
+MonthlyHabitTracker.displayName = 'MonthlyHabitTracker';
 
 export default MonthlyHabitTracker;
