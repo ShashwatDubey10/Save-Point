@@ -8,7 +8,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 import LevelUpModal from '../components/LevelUpModal';
-import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { KanbanColumn, DraggableTaskCard } from '../components/KanbanBoard';
 
 const TasksPage = () => {
@@ -30,13 +30,19 @@ const TasksPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
-  // Drag and drop state
+  // Drag and drop state - with touch support for mobile
   const [activeId, setActiveId] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3, // Reduced for more responsive dragging
+        distance: 5, // Small movement threshold
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 100, // Quick response on mobile
+        tolerance: 8,
       },
     })
   );
@@ -466,57 +472,74 @@ const TasksPage = () => {
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content */}
-      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+      {/* Main Content - Mobile-first padding */}
+      <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
+        {/* Header - Responsive text */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
             Tasks & Deadlines 📋
           </h1>
-          <p className="text-gray-400">
-            Manage your tasks and stay on top of your deadlines. Click on a task's status icon to cycle: To Do → In Progress → Completed
+          <p className="text-sm sm:text-base text-gray-400">
+            {view === 'board' ? 'Drag tasks between columns to change their status' : 'Click status icon to cycle: To Do → In Progress → Completed'}
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
             {error}
           </div>
         )}
 
-        {/* Filters and Actions */}
-        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* Filters and Actions - Mobile-first */}
+        <div className="mb-4 sm:mb-6 flex flex-col gap-3">
+          {/* Top row: View toggle and Add button */}
+          <div className="flex items-center justify-between gap-3">
             {/* View Toggle */}
             <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg">
               <button
                 onClick={() => setView('list')}
-                className={`px-3 py-1.5 rounded-md transition-all ${
+                className={`touch-target px-2.5 sm:px-3 py-1.5 rounded-md transition-all ${
                   view === 'list' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'
                 }`}
+                aria-label="List view"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
               <button
                 onClick={() => setView('board')}
-                className={`px-3 py-1.5 rounded-md transition-all ${
+                className={`touch-target px-2.5 sm:px-3 py-1.5 rounded-md transition-all ${
                   view === 'board' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'
                 }`}
+                aria-label="Board view"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                 </svg>
               </button>
             </div>
 
+            {/* Add Task Button */}
+            <button
+              onClick={handleCreateTask}
+              className="touch-target flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors text-sm sm:text-base"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="whitespace-nowrap">Add Task</span>
+            </button>
+          </div>
+
+          {/* Bottom row: Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
             {/* Status Filter */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
+              className="px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs sm:text-sm flex-shrink-0"
             >
               <option value="all" className="bg-dark-800">All Status</option>
               <option value="todo" className="bg-dark-800">To Do</option>
@@ -528,7 +551,7 @@ const TasksPage = () => {
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
-              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
+              className="px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs sm:text-sm flex-shrink-0"
             >
               <option value="all" className="bg-dark-800">All Priorities</option>
               <option value="urgent" className="bg-dark-800">Urgent</option>
@@ -537,16 +560,6 @@ const TasksPage = () => {
               <option value="low" className="bg-dark-800">Low</option>
             </select>
           </div>
-
-          <button
-            onClick={handleCreateTask}
-            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Task
-          </button>
         </div>
 
         {/* Tasks View */}
@@ -570,7 +583,7 @@ const TasksPage = () => {
             ))}
           </div>
         ) : (
-          /* Board View with Drag & Drop */
+          /* Board View with Drag & Drop - Stacked on mobile, horizontal on desktop */
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -578,7 +591,8 @@ const TasksPage = () => {
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
-            <div className="flex gap-4 overflow-x-auto pb-4">
+            {/* Mobile: Stack vertically, Desktop: Horizontal layout */}
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
               <KanbanColumn
                 status="todo"
                 title="To Do"
@@ -628,17 +642,24 @@ const TasksPage = () => {
               />
             </div>
 
-            <DragOverlay dropAnimation={{
-              duration: 200,
-              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-            }}>
+            <DragOverlay
+              dropAnimation={{
+                duration: 200,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+              }}
+            >
               {activeTask ? (
-                <div className="rotate-3 scale-105" style={{ cursor: 'grabbing' }}>
-                  <DraggableTaskCard
-                    task={activeTask}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
-                  />
+                <div className="rotate-2 scale-105 opacity-90">
+                  <div className="glass rounded-xl p-3 sm:p-4 shadow-2xl border-2 border-primary-500">
+                    <div className="flex items-start gap-2">
+                      <div className="w-8 h-8 shrink-0 rounded-lg bg-primary-500/20 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-white font-medium flex-1 text-sm sm:text-base">{activeTask.title}</h3>
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </DragOverlay>
