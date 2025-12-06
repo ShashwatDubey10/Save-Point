@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const MonthlyHabitTracker = ({ habits = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -8,6 +8,11 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
     totalXP: 0,
     badges: 0
   });
+
+  // Create a serialized version of habits to detect changes properly
+  const habitsKey = useMemo(() => {
+    return habits.map(h => `${h._id}-${h.completions?.length || 0}`).join('|');
+  }, [habits]);
 
   // Get days in current month
   const daysInMonth = new Date(
@@ -35,24 +40,28 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
 
   // Calculate completion status for each habit on each day
   const getCompletionStatus = (habit, day) => {
-    if (!habit.completions || habit.completions.length === 0) return 0;
-
     const targetDate = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
       day
     );
+    targetDate.setHours(0, 0, 0, 0);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
     if (habitCreatedDate > targetDate) {
       return 2; // Not applicable (habit didn't exist yet)
     }
 
+    // Handle missing completions array
+    if (!habit.completions || habit.completions.length === 0) return 0;
+
     // Find if there's a completion for this date
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      return completionDate.toDateString() === targetDate.toDateString();
+      completionDate.setHours(0, 0, 0, 0);
+      return completionDate.getTime() === targetDate.getTime();
     });
 
     return completion ? 1 : 0;
@@ -101,7 +110,15 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
 
   // Calculate stats
   useEffect(() => {
-    if (habits.length === 0) return;
+    if (habits.length === 0) {
+      setStats({
+        completionRate: 0,
+        currentStreak: 0,
+        totalXP: 0,
+        badges: 0
+      });
+      return;
+    }
 
     let totalCompletions = 0;
     let totalPossible = 0;
@@ -110,8 +127,6 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
     let badgesCount = 0;
 
     habits.forEach(habit => {
-      if (!habit.completions) return;
-
       const habitCreatedDate = new Date(habit.createdAt);
       const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -122,8 +137,9 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
         habitStartDay = habitCreatedDate.getDate();
       }
 
-      // Count completions for current month
-      const monthCompletions = habit.completions.filter(c => {
+      // Count completions for current month - handle missing completions array
+      const completions = habit.completions || [];
+      const monthCompletions = completions.filter(c => {
         const date = new Date(c.date);
         return date.getMonth() === currentDate.getMonth() &&
                date.getFullYear() === currentDate.getFullYear();
@@ -139,9 +155,10 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
       // XP calculation (10 XP per completion)
       xpEarned += monthCompletions.length * 10;
 
-      // Track longest streak
-      if (habit.stats?.currentStreak > longestStreak) {
-        longestStreak = habit.stats.currentStreak;
+      // Track longest streak - handle missing stats
+      const currentStreak = habit.stats?.currentStreak || 0;
+      if (currentStreak > longestStreak) {
+        longestStreak = currentStreak;
       }
     });
 
@@ -155,7 +172,7 @@ const MonthlyHabitTracker = ({ habits = [] }) => {
       totalXP: xpEarned,
       badges: badgesCount
     });
-  }, [habits, currentDate, currentDay, daysInMonth, isCurrentMonth]);
+  }, [habits, habitsKey, currentDate, currentDay, daysInMonth, isCurrentMonth]);
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));

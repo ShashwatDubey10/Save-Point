@@ -65,7 +65,7 @@ const DashboardPage = () => {
 
   // Check if habit is completed today (same as HabitsPage)
   const isCompletedToday = (habit) => {
-    if (!habit.completions || habit.completions.length === 0) {
+    if (!habit || !habit.completions || habit.completions.length === 0) {
       return false;
     }
 
@@ -73,6 +73,10 @@ const DashboardPage = () => {
     today.setHours(0, 0, 0, 0);
 
     const lastCompletionData = habit.completions[habit.completions.length - 1];
+    if (!lastCompletionData || !lastCompletionData.date) {
+      return false;
+    }
+
     const lastCompletion = new Date(lastCompletionData.date);
     lastCompletion.setHours(0, 0, 0, 0);
 

@@ -103,6 +103,22 @@ const habitSchema = new mongoose.Schema({
 habitSchema.index({ user: 1, isActive: 1 });
 habitSchema.index({ user: 1, category: 1 });
 
+// Pre-save hook to ensure stats are initialized
+habitSchema.pre('save', function(next) {
+  if (!this.stats) {
+    this.stats = {
+      totalCompletions: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastCompletedDate: null
+    };
+  }
+  if (!this.completions) {
+    this.completions = [];
+  }
+  next();
+});
+
 // Method to check if habit was completed today
 habitSchema.methods.isCompletedToday = function() {
   if (this.completions.length === 0) return false;

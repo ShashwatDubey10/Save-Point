@@ -57,12 +57,15 @@ const HabitsPage = () => {
 
   // Check if habit is completed today
   const isCompletedToday = (habit) => {
-    if (!habit.completions || habit.completions.length === 0) return false;
+    if (!habit || !habit.completions || habit.completions.length === 0) return false;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const lastCompletion = new Date(habit.completions[habit.completions.length - 1].date);
+    const lastCompletionData = habit.completions[habit.completions.length - 1];
+    if (!lastCompletionData || !lastCompletionData.date) return false;
+
+    const lastCompletion = new Date(lastCompletionData.date);
     lastCompletion.setHours(0, 0, 0, 0);
 
     return lastCompletion.getTime() === today.getTime();

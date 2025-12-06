@@ -267,11 +267,11 @@ export const getHabitStats = asyncHandler(async (req, res) => {
   const stats = {
     totalHabits: habits.length,
     completedToday: habits.filter(h => h.isCompletedToday()).length,
-    totalCompletions: habits.reduce((sum, h) => h.stats.totalCompletions + sum, 0),
+    totalCompletions: habits.reduce((sum, h) => sum + (h.stats?.totalCompletions || 0), 0),
     averageStreak: habits.length > 0
-      ? Math.round(habits.reduce((sum, h) => h.stats.currentStreak + sum, 0) / habits.length)
+      ? Math.round(habits.reduce((sum, h) => sum + (h.stats?.currentStreak || 0), 0) / habits.length)
       : 0,
-    longestStreak: Math.max(...habits.map(h => h.stats.longestStreak), 0),
+    longestStreak: Math.max(...habits.map(h => h.stats?.longestStreak || 0), 0),
     byCategory: {}
   };
 
@@ -284,7 +284,7 @@ export const getHabitStats = asyncHandler(async (req, res) => {
       };
     }
     stats.byCategory[habit.category].count++;
-    stats.byCategory[habit.category].completions += habit.stats.totalCompletions;
+    stats.byCategory[habit.category].completions += (habit.stats?.totalCompletions || 0);
   });
 
   res.status(200).json({
