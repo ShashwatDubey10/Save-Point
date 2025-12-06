@@ -1,5 +1,179 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
+// Individual Draggable Habit Card
+const DraggableHabitCard = ({
+  habit,
+  index,
+  onEdit,
+  onDelete,
+  onToggle,
+  onDragStart,
+  isCompletedToday,
+  isDragging
+}) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const longPressTimerRef = useRef(null);
+  const dragStartTimeRef = useRef(null);
+
+  // Handle press start (both mouse and touch)
+  const handlePressStart = (e, isTouchEvent) => {
+    // Don't start drag if clicking buttons or checkbox
+    if (e.target.closest('button') || e.target.closest('.checkbox')) {
+      return;
+    }
+
+    setIsPressed(true);
+    dragStartTimeRef.current = Date.now();
+
+    // For touch: wait 1 second before allowing drag
+    if (isTouchEvent) {
+      longPressTimerRef.current = setTimeout(() => {
+        // Vibrate to indicate drag mode activated
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        onDragStart(habit, index, e);
+      }, 1000);
+    } else {
+      // For mouse: activate immediately
+      onDragStart(habit, index, e);
+    }
+  };
+
+  // Handle press end
+  const handlePressEnd = () => {
+    setIsPressed(false);
+
+    // Clear long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    // Check if it was a quick tap (less than 200ms)
+    const pressDuration = Date.now() - (dragStartTimeRef.current || 0);
+    if (pressDuration < 200 && !isDragging) {
+      // This was a tap, allow toggle
+      const completed = isCompletedToday(habit);
+      onToggle(habit._id, completed);
+    }
+  };
+
+  // Cancel drag on scroll or movement
+  const handlePressCancel = () => {
+    setIsPressed(false);
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const completed = isCompletedToday(habit);
+
+  return (
+    <div
+      className={`glass rounded-xl p-4 flex items-center gap-4 transition-all select-none ${
+        completed ? 'border border-green-500/30' : ''
+      } ${isDragging ? 'opacity-40 scale-95' : ''} ${
+        isPressed && !isDragging ? 'scale-98' : ''
+      } ${!isDragging ? 'hover:bg-white/10' : ''}`}
+      style={{
+        cursor: isDragging ? 'grabbing' : 'grab',
+        touchAction: 'none',
+      }}
+      // Mouse events
+      onMouseDown={(e) => handlePressStart(e, false)}
+      onMouseUp={handlePressEnd}
+      onMouseLeave={handlePressCancel}
+      // Touch events
+      onTouchStart={(e) => handlePressStart(e, true)}
+      onTouchEnd={handlePressEnd}
+      onTouchCancel={handlePressCancel}
+    >
+      {/* Drag Handle Indicator */}
+      <div className="flex flex-col gap-0.5 text-gray-600">
+        <div className="w-1 h-1 rounded-full bg-current"></div>
+        <div className="w-1 h-1 rounded-full bg-current"></div>
+        <div className="w-1 h-1 rounded-full bg-current"></div>
+      </div>
+
+      {/* Checkbox */}
+      <div
+        className={`checkbox w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+          completed
+            ? 'bg-green-500 border-green-500'
+            : 'border-white/30 hover:border-primary-500'
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(habit._id, completed);
+        }}
+      >
+        {completed && (
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </div>
+
+      {/* Icon */}
+      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
+        {habit.icon || '📌'}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1">
+        <h3 className={`font-medium transition-all ${
+          completed ? 'text-gray-400 line-through' : 'text-white'
+        }`}>
+          {habit.title || habit.name}
+        </h3>
+        <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
+      </div>
+
+      {/* Streak */}
+      <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
+        <span className="text-orange-400">🔥</span>
+        <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
+      </div>
+
+      {/* XP */}
+      <div className="text-primary-400 font-medium">
+        +10 XP
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(habit, e);
+          }}
+          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          title="Edit habit"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(habit, e);
+          }}
+          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
+          title="Delete habit"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Main Draggable Habit List Component
 const DraggableHabitList = ({
   habits,
   onReorder,
@@ -10,228 +184,145 @@ const DraggableHabitList = ({
 }) => {
   const [dragState, setDragState] = useState({
     isDragging: false,
+    draggedHabit: null,
     draggedIndex: null,
     currentY: 0,
-    startY: 0,
-    offsetY: 0,
-    placeholderIndex: null,
   });
 
-  const longPressTimerRef = useRef(null);
-  const scrollCheckIntervalRef = useRef(null);
+  // Use refs to store data that event handlers need to access
+  const dragDataRef = useRef({
+    isDragging: false,
+    draggedHabit: null,
+    draggedIndex: null,
+    currentY: 0,
+    targetIndex: null,
+  });
+
+  const dragGhostRef = useRef(null);
   const itemRefs = useRef([]);
-  const initialScrollY = useRef(0);
-  const isDragActiveRef = useRef(false);
 
-  // Clean up timers on unmount
-  useEffect(() => {
-    return () => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-      }
-      if (scrollCheckIntervalRef.current) {
-        clearInterval(scrollCheckIntervalRef.current);
-      }
+  // Handle drag start
+  const handleDragStart = useCallback((habit, index, e) => {
+    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+    // Update both state and ref
+    const newDragData = {
+      isDragging: true,
+      draggedHabit: habit,
+      draggedIndex: index,
+      currentY: clientY,
+      targetIndex: index,
     };
-  }, []);
 
-  const handleTouchStart = (e, index) => {
-    // Don't start drag if touching a button
-    if (e.target.closest('button')) {
-      return;
-    }
+    dragDataRef.current = newDragData;
+    setDragState(newDragData);
 
-    const touch = e.touches[0];
-    const itemRect = itemRefs.current[index].getBoundingClientRect();
+    // Define handlers as closures that access refs
+    const handleMove = (e) => {
+      if (!dragDataRef.current.isDragging) return;
 
-    initialScrollY.current = window.scrollY;
-    isDragActiveRef.current = false;
-
-    // Start long-press timer (2 seconds)
-    longPressTimerRef.current = setTimeout(() => {
-      // Activate drag mode after 2 seconds
-      isDragActiveRef.current = true;
-
-      // Haptic feedback (if supported)
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
+      // Prevent scrolling on touch devices
+      if (e.type.includes('touch')) {
+        e.preventDefault();
       }
+
+      const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+      // Calculate which position the item should be in
+      let targetIndex = dragDataRef.current.draggedIndex;
+
+      itemRefs.current.forEach((ref, i) => {
+        if (i === dragDataRef.current.draggedIndex || !ref) return;
+
+        const rect = ref.getBoundingClientRect();
+        const itemMiddle = rect.top + rect.height / 2;
+
+        if (clientY < itemMiddle && i < dragDataRef.current.draggedIndex) {
+          targetIndex = i;
+        } else if (clientY > itemMiddle && i > dragDataRef.current.draggedIndex) {
+          targetIndex = i;
+        }
+      });
+
+      // Update both ref and state
+      dragDataRef.current = {
+        ...dragDataRef.current,
+        currentY: clientY,
+        targetIndex,
+      };
 
       setDragState({
-        isDragging: true,
-        draggedIndex: index,
-        currentY: touch.clientY,
-        startY: touch.clientY,
-        offsetY: touch.clientY - itemRect.top,
-        placeholderIndex: index,
+        ...dragDataRef.current,
       });
-    }, 2000);
+    };
 
-    // Check for scroll every 100ms to cancel drag
-    scrollCheckIntervalRef.current = setInterval(() => {
-      if (Math.abs(window.scrollY - initialScrollY.current) > 10) {
-        cancelDrag();
-      }
-    }, 100);
-  };
+    const handleEnd = () => {
+      // Remove event listeners
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
 
-  const handleTouchMove = (e, index) => {
-    // If we haven't activated drag mode yet, check if user is scrolling
-    if (!isDragActiveRef.current) {
-      if (Math.abs(window.scrollY - initialScrollY.current) > 5) {
-        cancelDrag();
-      }
-      return;
-    }
+      // Reorder habits if position changed
+      const { draggedIndex, targetIndex } = dragDataRef.current;
 
-    // Prevent scrolling while dragging
-    e.preventDefault();
-
-    const touch = e.touches[0];
-    const currentY = touch.clientY;
-
-    // Update drag position
-    setDragState(prev => ({
-      ...prev,
-      currentY,
-    }));
-
-    // Calculate which position the item should be in
-    let newPlaceholderIndex = dragState.draggedIndex;
-    const draggedItemHeight = itemRefs.current[dragState.draggedIndex]?.offsetHeight || 0;
-
-    itemRefs.current.forEach((ref, i) => {
-      if (i === dragState.draggedIndex || !ref) return;
-
-      const rect = ref.getBoundingClientRect();
-      const itemMiddle = rect.top + rect.height / 2;
-
-      if (currentY < itemMiddle && i < dragState.draggedIndex) {
-        newPlaceholderIndex = i;
-      } else if (currentY > itemMiddle && i > dragState.draggedIndex) {
-        newPlaceholderIndex = i;
-      }
-    });
-
-    if (newPlaceholderIndex !== dragState.placeholderIndex) {
-      setDragState(prev => ({
-        ...prev,
-        placeholderIndex: newPlaceholderIndex,
-      }));
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    // Clear timers
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
-    if (scrollCheckIntervalRef.current) {
-      clearInterval(scrollCheckIntervalRef.current);
-    }
-
-    // If drag was active, perform reorder
-    if (isDragActiveRef.current && dragState.isDragging) {
-      const { draggedIndex, placeholderIndex } = dragState;
-
-      if (draggedIndex !== placeholderIndex) {
-        // Reorder the habits
+      if (draggedIndex !== null && targetIndex !== null && draggedIndex !== targetIndex) {
         const newHabits = [...habits];
         const [draggedHabit] = newHabits.splice(draggedIndex, 1);
-        newHabits.splice(placeholderIndex, 0, draggedHabit);
-
-        // Call parent's reorder function
+        newHabits.splice(targetIndex, 0, draggedHabit);
         onReorder(newHabits);
       }
-    }
 
-    // Reset drag state
-    setDragState({
-      isDragging: false,
-      draggedIndex: null,
-      currentY: 0,
-      startY: 0,
-      offsetY: 0,
-      placeholderIndex: null,
-    });
-    isDragActiveRef.current = false;
-  };
-
-  const cancelDrag = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
-    if (scrollCheckIntervalRef.current) {
-      clearInterval(scrollCheckIntervalRef.current);
-    }
-
-    setDragState({
-      isDragging: false,
-      draggedIndex: null,
-      currentY: 0,
-      startY: 0,
-      offsetY: 0,
-      placeholderIndex: null,
-    });
-    isDragActiveRef.current = false;
-  };
-
-  const getItemStyle = (index) => {
-    const { isDragging, draggedIndex, currentY, offsetY, placeholderIndex } = dragState;
-
-    if (isDragging && index === draggedIndex) {
-      // Style for the dragged item
-      return {
-        position: 'fixed',
-        left: '50%',
-        top: `${currentY - offsetY}px`,
-        transform: 'translateX(-50%) scale(1.05)',
-        zIndex: 1000,
-        opacity: 0.9,
-        width: `${itemRefs.current[index]?.offsetWidth}px`,
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-        transition: 'none',
-        touchAction: 'none',
+      // Reset state
+      dragDataRef.current = {
+        isDragging: false,
+        draggedHabit: null,
+        draggedIndex: null,
+        currentY: 0,
+        targetIndex: null,
       };
-    }
 
-    if (isDragging && index === placeholderIndex && index !== draggedIndex) {
-      // Style for the placeholder position
-      return {
-        borderColor: 'rgba(139, 92, 246, 0.5)',
-        borderWidth: '2px',
-        borderStyle: 'dashed',
-        transition: 'all 0.3s ease',
-      };
-    }
-
-    return {
-      transition: 'all 0.3s ease',
+      setDragState({
+        isDragging: false,
+        draggedHabit: null,
+        draggedIndex: null,
+        currentY: 0,
+      });
     };
-  };
 
+    // Add event listeners
+    if (e.type.includes('touch')) {
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
+    } else {
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleEnd);
+    }
+  }, [habits, onReorder]);
+
+  // Calculate transform for shifting items
   const getTransform = (index) => {
-    const { isDragging, draggedIndex, placeholderIndex } = dragState;
+    const { isDragging, draggedIndex, targetIndex } = dragState;
 
-    if (!isDragging || draggedIndex === null || placeholderIndex === null) {
+    if (!isDragging || draggedIndex === null || targetIndex === null) {
       return 'translateY(0)';
     }
 
-    // Don't transform the dragged item (it's positioned absolutely)
+    // Don't transform the dragged item
     if (index === draggedIndex) {
       return 'translateY(0)';
     }
 
     // Items between old and new position should shift
-    if (draggedIndex < placeholderIndex) {
+    if (draggedIndex < targetIndex) {
       // Dragging down
-      if (index > draggedIndex && index <= placeholderIndex) {
+      if (index > draggedIndex && index <= targetIndex) {
         const itemHeight = itemRefs.current[draggedIndex]?.offsetHeight || 0;
         return `translateY(-${itemHeight + 12}px)`; // 12px is gap
       }
-    } else if (draggedIndex > placeholderIndex) {
+    } else if (draggedIndex > targetIndex) {
       // Dragging up
-      if (index < draggedIndex && index >= placeholderIndex) {
+      if (index < draggedIndex && index >= targetIndex) {
         const itemHeight = itemRefs.current[draggedIndex]?.offsetHeight || 0;
         return `translateY(${itemHeight + 12}px)`; // 12px is gap
       }
@@ -241,106 +332,58 @@ const DraggableHabitList = ({
   };
 
   return (
-    <div className="space-y-3">
-      {habits.map((habit, index) => {
-        const completed = isCompletedToday(habit);
-        const isDragged = dragState.isDragging && index === dragState.draggedIndex;
-
-        return (
+    <>
+      <div className="space-y-3">
+        {habits.map((habit, index) => (
           <div
             key={habit._id}
             ref={(el) => (itemRefs.current[index] = el)}
-            className={`glass rounded-xl p-4 flex items-center gap-4 transition-all ${
-              completed ? 'border border-green-500/30' : ''
-            } ${isDragged ? 'cursor-grabbing' : 'cursor-grab'} ${
-              !isDragged && !dragState.isDragging ? 'hover:bg-white/10' : ''
-            }`}
             style={{
-              ...getItemStyle(index),
               transform: getTransform(index),
+              transition: dragState.isDragging && index !== dragState.draggedIndex ? 'transform 0.3s ease' : 'none',
             }}
-            onTouchStart={(e) => handleTouchStart(e, index)}
-            onTouchMove={(e) => handleTouchMove(e, index)}
-            onTouchEnd={handleTouchEnd}
-            onClick={() => !dragState.isDragging && onToggle(habit._id, completed)}
           >
-            {/* Drag Handle Indicator */}
-            <div className="flex flex-col gap-1 text-gray-600">
-              <div className="w-1 h-1 rounded-full bg-current"></div>
-              <div className="w-1 h-1 rounded-full bg-current"></div>
-              <div className="w-1 h-1 rounded-full bg-current"></div>
-            </div>
+            <DraggableHabitCard
+              habit={habit}
+              index={index}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onToggle={onToggle}
+              onDragStart={handleDragStart}
+              isCompletedToday={isCompletedToday}
+              isDragging={dragState.draggedIndex === index}
+            />
+          </div>
+        ))}
+      </div>
 
-            {/* Checkbox */}
-            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-              completed
-                ? 'bg-green-500 border-green-500'
-                : 'border-white/30 hover:border-primary-500'
-            }`}>
-              {completed && (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </div>
-
-            {/* Icon */}
+      {/* Drag Ghost - Follows cursor/finger */}
+      {dragState.isDragging && dragState.draggedHabit && (
+        <div
+          ref={dragGhostRef}
+          className="fixed pointer-events-none z-50"
+          style={{
+            left: '50%',
+            top: dragState.currentY,
+            transform: 'translate(-50%, -50%) scale(1.05)',
+            opacity: 0.9,
+            width: itemRefs.current[dragState.draggedIndex]?.offsetWidth || 'auto',
+          }}
+        >
+          <div className="glass rounded-xl p-4 shadow-2xl ring-2 ring-primary-500 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
-              {habit.icon || '📌'}
+              {dragState.draggedHabit.icon || '📌'}
             </div>
-
-            {/* Info */}
             <div className="flex-1">
-              <h3 className={`font-medium transition-all ${
-                completed ? 'text-gray-400 line-through' : 'text-white'
-              }`}>
-                {habit.title || habit.name}
+              <h3 className="text-white font-medium">
+                {dragState.draggedHabit.title || dragState.draggedHabit.name}
               </h3>
-              <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
-            </div>
-
-            {/* Streak */}
-            <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
-              <span className="text-orange-400">🔥</span>
-              <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
-            </div>
-
-            {/* XP */}
-            <div className="text-primary-400 font-medium">
-              +10 XP
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(habit, e);
-                }}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                title="Edit habit"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(habit, e);
-                }}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
-                title="Delete habit"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              <p className="text-sm text-gray-400 capitalize">{dragState.draggedHabit.category}</p>
             </div>
           </div>
-        );
-      })}
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 
