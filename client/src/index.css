@@ -44,6 +44,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* Prevent horizontal overflow */
   overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure root elements use full width */
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent any element from causing horizontal scroll on mobile */
+@media (max-width: 640px) {
+  * {
+    max-width: 100vw;
+  }
+
+  /* But allow specific containers to be full width */
+  .w-full,
+  [class*="w-screen"],
+  main,
+  section {
+    max-width: 100% !important;
+  }
 }
 
 /* Animations */

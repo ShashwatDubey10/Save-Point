@@ -247,14 +247,14 @@ const DashboardPage = () => {
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content - Mobile-first padding */}
-      <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
+      {/* Main Content - Full width on mobile */}
+      <main className="pt-14 sm:pt-20 lg:pt-32 pb-16 lg:pb-12 px-2 sm:px-4 lg:px-6 w-full sm:max-w-7xl sm:mx-auto">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-1">
             {getGreeting()}, <span className="gradient-text">{user?.username || 'User'}</span>! 👋
           </h1>
-          <p className="text-gray-400">
+          <p className="text-sm sm:text-base text-gray-400">
             {habits.length > 0
               ? `Let's make today count. You have ${habits.length - completedCount} habits left.`
               : 'Start by adding your first habit!'}
@@ -268,93 +268,94 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Stats Grid - Compact on mobile */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
 
           {/* Level Card */}
-          <Link to="/levels" className="glass rounded-2xl p-5 hover:bg-white/10 transition-all cursor-pointer">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center text-2xl">
+          <Link to="/levels" className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-white/10 transition-all cursor-pointer">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center text-xl sm:text-2xl">
                 🏆
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Level</p>
-                <p className="text-2xl font-bold text-white">{level}</p>
+                <p className="text-gray-400 text-xs sm:text-sm">Level</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{level}</p>
               </div>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-2">
+            <div className="w-full bg-white/10 rounded-full h-1.5 sm:h-2">
               <div
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 h-1.5 sm:h-2 rounded-full transition-all duration-500"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP to next level</p>
+            <p className="text-xs text-gray-500 mt-1 sm:mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP</p>
           </Link>
 
           {/* Streak Card */}
-          <Link to="/streaks" className="glass rounded-2xl p-5 hover:bg-white/10 transition-all cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center text-2xl">
+          <Link to="/streaks" className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-white/10 transition-all cursor-pointer">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center text-xl sm:text-2xl">
                 🔥
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Best Streak</p>
-                <p className="text-2xl font-bold text-white">{user?.gamification?.longestStreak || 0} days</p>
+                <p className="text-gray-400 text-xs sm:text-sm">Streak</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{user?.gamification?.longestStreak || 0}</p>
               </div>
             </div>
           </Link>
 
           {/* Completed Today */}
-          <div className="glass rounded-2xl p-5 hover:bg-white/10 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-2xl">
+          <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-white/10 transition-all">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xl sm:text-2xl">
                 ✅
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Completed Today</p>
-                <p className="text-2xl font-bold text-white">{completedCount}/{habits.length}</p>
+                <p className="text-gray-400 text-xs sm:text-sm">Done</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{completedCount}/{habits.length}</p>
               </div>
             </div>
           </div>
 
           {/* Total Habits */}
-          <div className="glass rounded-2xl p-5 hover:bg-white/10 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-2xl">
+          <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-white/10 transition-all">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-xl sm:text-2xl">
                 📊
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Total Habits</p>
-                <p className="text-2xl font-bold text-white">{habits.length}</p>
+                <p className="text-gray-400 text-xs sm:text-sm">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{habits.length}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Monthly Habit Tracker */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-6">
           <MonthlyHabitTracker habits={habits} />
         </div>
 
         {/* Habits and Sidebar Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
           {/* Habits List */}
           <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white">Today's Habits</h2>
-                <Link to="/habits" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-white">Today's Habits</h2>
+                <Link to="/habits" className="text-xs sm:text-sm text-primary-400 hover:text-primary-300 transition-colors">
                   View All →
                 </Link>
               </div>
               <button
                 onClick={handleCreateHabit}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Habit
+                <span className="hidden sm:inline">Add Habit</span>
+                <span className="sm:hidden">Add</span>
               </button>
             </div>
 
@@ -383,10 +384,10 @@ const DashboardPage = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Weekly Progress */}
-            <div className="glass rounded-2xl p-5">
-              <h3 className="text-lg font-bold text-white mb-4">Weekly Progress</h3>
+            <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+              <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Weekly Progress</h3>
               <div className="flex items-end justify-between gap-2 h-32">
                 {weekDays.map((day, i) => (
                   <div key={day} className="flex-1 flex flex-col items-center gap-2">
@@ -409,8 +410,8 @@ const DashboardPage = () => {
             </div>
 
             {/* Achievements */}
-            <div className="glass rounded-2xl p-5">
-              <h3 className="text-lg font-bold text-white mb-4">Recent Achievements</h3>
+            <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+              <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Recent Achievements</h3>
               <div className="space-y-3">
                 {user?.gamification?.badges && user.gamification.badges.length > 0 ? (
                   user.gamification.badges.slice(0, 3).map((badge, i) => (
@@ -455,10 +456,10 @@ const DashboardPage = () => {
 
         {/* Tasks Section - Full Width */}
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-white">Upcoming Tasks</h2>
-              <Link to="/tasks" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <h2 className="text-lg sm:text-xl font-bold text-white">Upcoming Tasks</h2>
+              <Link to="/tasks" className="text-xs sm:text-sm text-primary-400 hover:text-primary-300 transition-colors">
                 View All →
               </Link>
             </div>
