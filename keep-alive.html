@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save Point - Keep Alive Service</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 50px;
+      margin: 1rem 0;
+      font-size: 1.1rem;
+    }
+
+    .status.active {
+      background: rgba(16, 185, 129, 0.3);
+      border: 2px solid #10b981;
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.3);
+      border: 2px solid #ef4444;
+    }
+
+    .pulse {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      background: #10b981;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .stats {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 1rem;
+      border-radius: 12px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .log {
+      margin-top: 2rem;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: left;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+    }
+
+    .log-entry {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      opacity: 0.6;
+      margin-right: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Save Point Keep-Alive</h1>
+    <p>Keeping your backend awake and responsive</p>
+
+    <div class="status active" id="status">
+      <span class="pulse"></span>
+      <span id="statusText">Monitoring...</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value" id="pingCount">0</span>
+        <span class="stat-label">Total Pings</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="successCount">0</span>
+        <span class="stat-label">Successful</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="failCount">0</span>
+        <span class="stat-label">Failed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="avgResponse">0ms</span>
+        <span class="stat-label">Avg Response</span>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    // Configuration
+    const BACKEND_URL = 'YOUR_BACKEND_URL_HERE'; // Replace with your Render backend URL
+    const PING_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    const MAX_LOG_ENTRIES = 20;
+
+    // State
+    let stats = {
+      total: 0,
+      success: 0,
+      failed: 0,
+      responseTimes: []
+    };
+
+    // DOM elements
+    const statusEl = document.getElementById('status');
+    const statusTextEl = document.getElementById('statusText');
+    const pingCountEl = document.getElementById('pingCount');
+    const successCountEl = document.getElementById('successCount');
+    const failCountEl = document.getElementById('failCount');
+    const avgResponseEl = document.getElementById('avgResponse');
+    const logEl = document.getElementById('log');
+
+    // Log entry
+    function addLog(message, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span>${message}`;
+
+      logEl.insertBefore(entry, logEl.firstChild);
+
+      // Keep only last MAX_LOG_ENTRIES
+      while (logEl.children.length > MAX_LOG_ENTRIES) {
+        logEl.removeChild(logEl.lastChild);
+      }
+    }
+
+    // Update stats UI
+    function updateStats() {
+      pingCountEl.textContent = stats.total;
+      successCountEl.textContent = stats.success;
+      failCountEl.textContent = stats.failed;
+
+      if (stats.responseTimes.length > 0) {
+        const avg = stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length;
+        avgResponseEl.textContent = Math.round(avg) + 'ms';
+      }
+    }
+
+    // Ping backend
+    async function pingBackend() {
+      stats.total++;
+      const startTime = Date.now();
+
+      try {
+        statusTextEl.textContent = 'Pinging...';
+        statusEl.className = 'status';
+
+        const response = await fetch(`${BACKEND_URL}/api/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const responseTime = Date.now() - startTime;
+        stats.responseTimes.push(responseTime);
+
+        if (response.ok) {
+          stats.success++;
+          statusEl.className = 'status active';
+          statusTextEl.textContent = 'Backend Awake';
+          addLog(`✓ Ping successful (${responseTime}ms)`);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        stats.failed++;
+        statusEl.className = 'status error';
+        statusTextEl.textContent = 'Ping Failed';
+        addLog(`✗ Ping failed: ${error.message}`, 'error');
+      }
+
+      updateStats();
+    }
+
+    // Initialize
+    function init() {
+      if (BACKEND_URL === 'YOUR_BACKEND_URL_HERE') {
+        statusTextEl.textContent = 'Configure Backend URL';
+        statusEl.className = 'status error';
+        addLog('⚠ Please configure BACKEND_URL in the script', 'error');
+        return;
+      }
+
+      addLog('🚀 Keep-alive service started');
+      addLog(`📡 Pinging every ${PING_INTERVAL / 60000} minutes`);
+
+      // Initial ping
+      pingBackend();
+
+      // Schedule regular pings
+      setInterval(pingBackend, PING_INTERVAL);
+    }
+
+    // Start when page loads
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

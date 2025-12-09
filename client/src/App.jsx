@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
+import BackendWakeUpIndicator from './components/BackendWakeUpIndicator';
 
 // Lazy load all pages for better code splitting
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -17,12 +18,43 @@ const NotesPage = lazy(() => import('./pages/NotesPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
-// Loading fallback component
-const LoadingFallback = () => (
-  <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-  </div>
-);
+// Enhanced loading fallback component with backend status
+const LoadingFallback = () => {
+  const [loadingMessage, setLoadingMessage] = useState('Loading...');
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+
+  useEffect(() => {
+    // Show "slow loading" message after 3 seconds
+    const slowTimer = setTimeout(() => {
+      setLoadingMessage('Backend might be waking up...');
+      setShowSlowMessage(true);
+    }, 3000);
+
+    // Show more detailed message after 8 seconds
+    const detailTimer = setTimeout(() => {
+      setLoadingMessage('This is taking longer than usual. Please wait...');
+    }, 8000);
+
+    return () => {
+      clearTimeout(slowTimer);
+      clearTimeout(detailTimer);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-gray-300 font-medium mb-2">{loadingMessage}</p>
+        {showSlowMessage && (
+          <p className="text-gray-500 text-sm max-w-xs mx-auto">
+            Free tier servers sleep after inactivity. First load may take 30-60 seconds.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -71,6 +103,7 @@ function App() {
     <Router>
       <AuthProvider>
         <AppRoutes />
+        <BackendWakeUpIndicator />
         <Toaster
           position="top-right"
           toastOptions={{
