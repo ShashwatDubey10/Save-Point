@@ -61,9 +61,9 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-dark-900 border-t border-white/10">
+    <footer className="relative bg-white dark:bg-dark-900 border-t border-gray-200 dark:border-white/10">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900 to-dark-800 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-white via-gray-50 to-gray-100 dark:from-dark-900 dark:via-dark-900 dark:to-dark-800 pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main footer content */}
@@ -73,7 +73,7 @@ const Footer = () => {
             <a href="/" className="inline-block">
               <img src="/SavePointLogo.png" alt="Save Point" className="h-12" />
             </a>
-            <p className="mt-4 text-gray-400 max-w-xs leading-relaxed">
+            <p className="mt-4 text-gray-600 dark:text-gray-400 max-w-xs leading-relaxed">
               Build powerful habits with gamification. Track progress, earn rewards, and transform your life.
             </p>
 
@@ -83,7 +83,7 @@ const Footer = () => {
                 <a
                   key={social.name}
                   href={social.href}
-                  className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                  className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all"
                   aria-label={social.name}
                 >
                   {social.icon}
@@ -94,13 +94,13 @@ const Footer = () => {
 
           {/* Product links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Product</h4>
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4">Product</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
-                    className="text-gray-400 hover:text-white transition-colors text-sm"
+                    className="text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-white transition-colors text-sm"
                   >
                     {link.label}
                   </a>
@@ -111,13 +111,13 @@ const Footer = () => {
 
           {/* Company links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Company</h4>
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4">Company</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
-                    className="text-gray-400 hover:text-white transition-colors text-sm"
+                    className="text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-white transition-colors text-sm"
                   >
                     {link.label}
                   </a>
@@ -128,13 +128,13 @@ const Footer = () => {
 
           {/* Legal links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Legal</h4>
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4">Legal</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
-                    className="text-gray-400 hover:text-white transition-colors text-sm"
+                    className="text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-white transition-colors text-sm"
                   >
                     {link.label}
                   </a>
@@ -145,13 +145,13 @@ const Footer = () => {
 
           {/* Newsletter */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Stay Updated</h4>
-            <p className="text-gray-400 text-sm mb-4">Get tips on building better habits.</p>
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-4">Stay Updated</h4>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Get tips on building better habits.</p>
             <form className="flex flex-col gap-2">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500 transition-colors"
+                className="px-4 py-2.5 bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500 transition-colors"
               />
               <button
                 type="submit"
@@ -164,12 +164,12 @@ const Footer = () => {
         </div>
 
         {/* Bottom bar */}
-        <div className="py-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-sm">
+        <div className="py-6 border-t border-gray-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-gray-500 dark:text-gray-500 text-sm">
             © {currentYear} Save Point. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <span className="text-gray-500 text-sm">Made with ❤️ for habit builders</span>
+            <span className="text-gray-500 dark:text-gray-500 text-sm">Made with ❤️ for habit builders</span>
           </div>
         </div>
       </div>

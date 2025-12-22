@@ -38,17 +38,24 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-gray-50 to-white dark:from-dark-900 dark:to-dark-900">
       {/* Animated background orbs */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-600/20 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary-500/15 rounded-full blur-3xl animate-pulse-glow animation-delay-200" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-700/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-600/10 dark:bg-primary-600/20 rounded-full blur-3xl animate-pulse-glow" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary-500/8 dark:bg-primary-500/15 rounded-full blur-3xl animate-pulse-glow animation-delay-200" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-700/5 dark:bg-primary-700/10 rounded-full blur-3xl" />
       </div>
 
       {/* Grid pattern overlay */}
       <div
-        className="absolute inset-0 z-0 opacity-[0.03]"
+        className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,0,0,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }}
+      />
+      <div
+        className="absolute inset-0 z-0 opacity-0 dark:opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
           backgroundSize: '50px 50px'
@@ -60,7 +67,7 @@ const HeroSection = () => {
         {PARTICLES.map((particle, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full animate-float"
+            className="absolute w-1 h-1 bg-gray-400/30 dark:bg-white/20 rounded-full animate-float"
             style={{
               left: `${particle.left}%`,
               top: `${particle.top}%`,
@@ -83,7 +90,7 @@ const HeroSection = () => {
         </div>
 
         {/* Hero Title */}
-        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold text-white mb-8 leading-[1.1] tracking-tight animate-fade-in-up animation-delay-200">
+        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold text-gray-900 dark:text-white mb-8 leading-[1.1] tracking-tight animate-fade-in-up animation-delay-200">
           Turn Daily Actions Into{' '}
           <span className="gradient-text">
             Lasting Change
@@ -91,7 +98,7 @@ const HeroSection = () => {
         </h1>
 
         {/* Hero Subtitle */}
-        <p className="text-xl sm:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400">
+        <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400">
           The gamified habit tracker that makes building routines feel like an adventure.
           Track progress, earn rewards, and watch yourself level up.
         </p>
@@ -115,17 +122,17 @@ const HeroSection = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-3xl mx-auto animate-fade-in-up animation-delay-800">
-          <div className="glass rounded-2xl p-6 hover:bg-white/10 transition-colors">
+          <div className="glass rounded-2xl p-6 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
             <div className="text-3xl sm:text-5xl font-bold gradient-text mb-2">10K+</div>
-            <div className="text-sm sm:text-base text-gray-400">Active Users</div>
+            <div className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Active Users</div>
           </div>
-          <div className="glass rounded-2xl p-6 hover:bg-white/10 transition-colors">
+          <div className="glass rounded-2xl p-6 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
             <div className="text-3xl sm:text-5xl font-bold gradient-text mb-2">1M+</div>
-            <div className="text-sm sm:text-base text-gray-400">Habits Tracked</div>
+            <div className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Habits Tracked</div>
           </div>
-          <div className="glass rounded-2xl p-6 hover:bg-white/10 transition-colors">
+          <div className="glass rounded-2xl p-6 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
             <div className="text-3xl sm:text-5xl font-bold gradient-text mb-2">95%</div>
-            <div className="text-sm sm:text-base text-gray-400">Success Rate</div>
+            <div className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Success Rate</div>
           </div>
         </div>
       </div>
@@ -133,7 +140,7 @@ const HeroSection = () => {
       {/* Scroll indicator */}
       {showScrollIndicator && (
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 transition-opacity duration-500">
-          <a href="#showcase" className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
+          <a href="#showcase" className="flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-white transition-colors">
             <span className="text-xs uppercase tracking-widest">Scroll</span>
             <div className="w-6 h-10 border-2 border-current rounded-full flex justify-center pt-2">
               <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" />

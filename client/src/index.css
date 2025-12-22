@@ -1,27 +1,97 @@
 @import "tailwindcss";
 
 @theme {
+  --color-scheme: light dark;
+
+  /* Primary colors - same for both themes */
   --color-primary-400: #818cf8;
   --color-primary-500: #6366f1;
   --color-primary-600: #4f46e5;
   --color-primary-700: #4338ca;
 
+  /* Dark mode colors */
   --color-dark-900: #0D1B2A;
   --color-dark-800: #1B2838;
   --color-dark-700: #2C3E50;
   --color-dark-600: #34495E;
 
+  /* Light mode colors */
+  --color-light-50: #f9fafb;
+  --color-light-100: #f3f4f6;
+  --color-light-200: #e5e7eb;
+  --color-light-300: #d1d5db;
+
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
+/* Tailwind v4 dark mode - uses .dark class on html element */
+
 html {
   scroll-behavior: smooth;
+<<<<<<< Updated upstream
+=======
+  scroll-padding-top: 80px; /* Offset for fixed header */
+  /* Prevent text size adjustment on mobile */
+  -webkit-text-size-adjust: 100%;
+  /* Enable touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Color scheme support for native UI elements */
+  color-scheme: light dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+>>>>>>> Stashed changes
 }
 
 body {
   min-height: 100vh;
+<<<<<<< Updated upstream
   background-color: var(--color-dark-900);
   -webkit-font-smoothing: antialiased;
+=======
+  min-height: -webkit-fill-available; /* iOS Safari fix */
+  background-color: #f9fafb; /* Light mode default - gray-50 */
+  color: #111827; /* Light mode text - gray-900 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background-color: var(--color-dark-900);
+  color: #f3f4f6; /* Dark mode text - gray-100 */
+}
+
+/* Ensure root elements use full width */
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent any element from causing horizontal scroll on mobile */
+@media (max-width: 640px) {
+  * {
+    max-width: 100vw;
+  }
+
+  /* But allow specific containers to be full width */
+  .w-full,
+  [class*="w-screen"],
+  main,
+  section {
+    max-width: 100% !important;
+  }
+>>>>>>> Stashed changes
 }
 
 /* Animations */
@@ -109,8 +179,13 @@ body {
 
 /* Glass effect */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 

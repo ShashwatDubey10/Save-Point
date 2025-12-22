@@ -211,25 +211,33 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-900">
       <AppHeader />
       <AppNavigation />
 
       {/* Main Content */}
       <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Welcome Section */}
+<<<<<<< Updated upstream
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
             {getGreeting()}, <span className="gradient-text">{user?.username || 'User'}</span>! 👋
           </h1>
           <p className="text-gray-400">
+=======
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-1">
+            {getGreeting()}, <span className="gradient-text">{user?.username || 'User'}</span>! 👋
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+>>>>>>> Stashed changes
             {habits.length > 0
               ? `Let's make today count. You have ${habits.length - completedCount} habits left.`
               : 'Start by adding your first habit!'}
@@ -253,16 +261,25 @@ const DashboardPage = () => {
                 🏆
               </div>
               <div>
+<<<<<<< Updated upstream
                 <p className="text-gray-400 text-sm">Level</p>
                 <p className="text-2xl font-bold text-white">{level}</p>
               </div>
             </div>
             <div className="w-full bg-white/10 rounded-full h-2">
+=======
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Level</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{level}</p>
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-white/10 rounded-full h-1.5 sm:h-2">
+>>>>>>> Stashed changes
               <div
                 className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
+<<<<<<< Updated upstream
             <p className="text-xs text-gray-500 mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP to next level</p>
           </Link>
 
@@ -275,11 +292,26 @@ const DashboardPage = () => {
               <div>
                 <p className="text-gray-400 text-sm">Best Streak</p>
                 <p className="text-2xl font-bold text-white">{user?.gamification?.longestStreak || 0} days</p>
+=======
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 sm:mt-2">{Math.max(0, xpForNextLevel - pointsInLevel)} XP</p>
+          </Link>
+
+          {/* Streak Card */}
+          <Link to="/streaks" className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center text-xl sm:text-2xl">
+                🔥
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Streak</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{user?.gamification?.longestStreak || 0}</p>
+>>>>>>> Stashed changes
               </div>
             </div>
           </Link>
 
           {/* Completed Today */}
+<<<<<<< Updated upstream
           <div className="glass rounded-2xl p-5 hover:bg-white/10 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-2xl">
@@ -288,11 +320,22 @@ const DashboardPage = () => {
               <div>
                 <p className="text-gray-400 text-sm">Completed Today</p>
                 <p className="text-2xl font-bold text-white">{completedCount}/{habits.length}</p>
+=======
+          <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xl sm:text-2xl">
+                ✅
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Done</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{completedCount}/{habits.length}</p>
+>>>>>>> Stashed changes
               </div>
             </div>
           </div>
 
           {/* Total Habits */}
+<<<<<<< Updated upstream
           <div className="glass rounded-2xl p-5 hover:bg-white/10 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-2xl">
@@ -301,6 +344,16 @@ const DashboardPage = () => {
               <div>
                 <p className="text-gray-400 text-sm">Total Habits</p>
                 <p className="text-2xl font-bold text-white">{habits.length}</p>
+=======
+          <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-xl sm:text-2xl">
+                📊
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{habits.length}</p>
+>>>>>>> Stashed changes
               </div>
             </div>
           </div>
@@ -315,10 +368,17 @@ const DashboardPage = () => {
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           {/* Habits List */}
           <div className="lg:col-span-2">
+<<<<<<< Updated upstream
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold text-white">Today's Habits</h2>
                 <Link to="/habits" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+=======
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Today's Habits</h2>
+                <Link to="/habits" className="text-xs sm:text-sm text-primary-400 hover:text-primary-300 transition-colors">
+>>>>>>> Stashed changes
                   View All →
                 </Link>
               </div>
@@ -336,8 +396,8 @@ const DashboardPage = () => {
             {habits.length === 0 ? (
               <div className="glass rounded-xl p-8 text-center">
                 <div className="text-4xl mb-4">🎯</div>
-                <h3 className="text-xl font-bold text-white mb-2">No habits yet</h3>
-                <p className="text-gray-400 mb-4">Start building your routine by adding your first habit!</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No habits yet</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">Start building your routine by adding your first habit!</p>
                 <button
                   onClick={handleCreateHabit}
                   className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
@@ -427,12 +487,17 @@ const DashboardPage = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Weekly Progress */}
+<<<<<<< Updated upstream
             <div className="glass rounded-2xl p-5">
               <h3 className="text-lg font-bold text-white mb-4">Weekly Progress</h3>
+=======
+            <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">Weekly Progress</h3>
+>>>>>>> Stashed changes
               <div className="flex items-end justify-between gap-2 h-32">
                 {weekDays.map((day, i) => (
                   <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-white/10 rounded-full flex-1 relative overflow-hidden">
+                    <div className="w-full bg-gray-200 dark:bg-white/10 rounded-full flex-1 relative overflow-hidden">
                       <div
                         className={`absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500 ${
                           weekProgress[i] === 100
@@ -451,41 +516,46 @@ const DashboardPage = () => {
             </div>
 
             {/* Achievements */}
+<<<<<<< Updated upstream
             <div className="glass rounded-2xl p-5">
               <h3 className="text-lg font-bold text-white mb-4">Recent Achievements</h3>
+=======
+            <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">Recent Achievements</h3>
+>>>>>>> Stashed changes
               <div className="space-y-3">
                 {user?.gamification?.badges && user.gamification.badges.length > 0 ? (
                   user.gamification.badges.slice(0, 3).map((badge, i) => (
-                    <div key={badge._id || i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <div key={badge._id || i} className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-white/5 rounded-xl">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-xl">
                         {badge.icon || '🌟'}
                       </div>
                       <div>
-                        <p className="text-white font-medium text-sm">{badge.name}</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-sm">{badge.name}</p>
                         {badge.description && (
-                          <p className="text-gray-500 text-xs">{badge.description}</p>
+                          <p className="text-gray-500 dark:text-gray-500 text-xs">{badge.description}</p>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
                   <>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl opacity-50">
-                      <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-xl">
+                    <div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-white/5 rounded-xl opacity-50">
+                      <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center text-xl">
                         🔒
                       </div>
                       <div>
-                        <p className="text-white font-medium text-sm">Early Bird</p>
-                        <p className="text-gray-500 text-xs">Complete a habit before 7 AM</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-sm">Early Bird</p>
+                        <p className="text-gray-500 dark:text-gray-500 text-xs">Complete a habit before 7 AM</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl opacity-50">
-                      <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-xl">
+                    <div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-white/5 rounded-xl opacity-50">
+                      <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-white/10 flex items-center justify-center text-xl">
                         🔒
                       </div>
                       <div>
-                        <p className="text-white font-medium text-sm">Perfect Week</p>
-                        <p className="text-gray-500 text-xs">Complete all habits for 7 days</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-sm">Perfect Week</p>
+                        <p className="text-gray-500 dark:text-gray-500 text-xs">Complete all habits for 7 days</p>
                       </div>
                     </div>
                   </>
@@ -497,10 +567,17 @@ const DashboardPage = () => {
 
         {/* Tasks Section - Full Width */}
         <div>
+<<<<<<< Updated upstream
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold text-white">Upcoming Tasks</h2>
               <Link to="/tasks" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+=======
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Upcoming Tasks</h2>
+              <Link to="/tasks" className="text-xs sm:text-sm text-primary-400 hover:text-primary-300 transition-colors">
+>>>>>>> Stashed changes
                 View All →
               </Link>
             </div>
@@ -509,7 +586,7 @@ const DashboardPage = () => {
           {tasks.length === 0 ? (
             <div className="glass rounded-xl p-6 text-center">
               <div className="text-3xl mb-2">📋</div>
-              <p className="text-gray-400">No active tasks</p>
+              <p className="text-gray-600 dark:text-gray-400">No active tasks</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -533,7 +610,7 @@ const DashboardPage = () => {
                     <Link
                       key={task._id}
                       to="/tasks"
-                      className={`glass rounded-xl p-4 flex items-center gap-4 hover:bg-white/10 transition-all ${
+                      className={`glass rounded-xl p-4 flex items-center gap-4 hover:bg-gray-100 dark:hover:bg-white/10 transition-all ${
                         isOverdue ? 'border border-red-500/30' : ''
                       }`}
                     >
@@ -547,9 +624,9 @@ const DashboardPage = () => {
 
                       {/* Task Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-white truncate">{task.title}</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">{task.title}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-gray-500 capitalize">{task.category}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 capitalize">{task.category}</p>
                           {dueDate && (
                             <>
                               <span className="text-gray-600">•</span>

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { useAuth } from './hooks/useAuth';
 import LandingPage from './pages/LandingPage';
 import RegisterPage from './pages/RegisterPage';
@@ -65,6 +66,7 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
+<<<<<<< Updated upstream
       <AuthProvider>
         <AppRoutes />
         <Toaster
@@ -82,17 +84,39 @@ function App() {
               iconTheme: {
                 primary: '#10b981',
                 secondary: '#fff',
+=======
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <BackendWakeUpIndicator />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#1f2937',
+                color: '#fff',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '12px',
+                padding: '16px',
+>>>>>>> Stashed changes
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
-      </AuthProvider>
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

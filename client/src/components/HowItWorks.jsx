@@ -42,7 +42,7 @@ const HowItWorks = () => {
       }`}
     >
       {/* Background */}
-      <div className="absolute inset-0 bg-dark-800" />
+      <div className="absolute inset-0 bg-gray-100 dark:bg-dark-800" />
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,11 +51,11 @@ const HowItWorks = () => {
           <span className="inline-block px-4 py-1.5 glass rounded-full text-primary-400 text-sm font-medium mb-4">
             How It Works
           </span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             Start in{' '}
             <span className="gradient-text">4 Simple Steps</span>
           </h2>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Transform your daily routines into powerful habits with our proven system.
           </p>
         </div>
@@ -81,19 +81,19 @@ const HowItWorks = () => {
                 </div>
 
                 {/* Card */}
-                <div className="glass rounded-2xl p-6 text-center hover:bg-white/10 transition-all duration-300 group-hover:-translate-y-2">
+                <div className="glass rounded-2xl p-6 text-center hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-300 group-hover:-translate-y-2">
                   {/* Step indicator */}
-                  <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-gray-400 text-sm font-bold mb-4">
+                  <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 text-sm font-bold mb-4">
                     {step.number}
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary-400 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-primary-400 transition-colors">
                     {step.title}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-gray-400 text-sm leading-relaxed">
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
                     {step.description}
                   </p>
                 </div>
@@ -101,7 +101,7 @@ const HowItWorks = () => {
                 {/* Arrow connector for mobile */}
                 {index < steps.length - 1 && (
                   <div className="flex justify-center my-4 lg:hidden">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-gray-500 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
                   </div>
@@ -113,7 +113,7 @@ const HowItWorks = () => {
 
         {/* CTA */}
         <div className="mt-20 text-center">
-          <p className="text-gray-400 mb-6">Ready to start your journey?</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Ready to start your journey?</p>
           <a
             href="/register"
             className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-500 hover:to-primary-600 transition-all shadow-lg shadow-primary-600/25 hover:shadow-primary-600/40 hover:-translate-y-1"

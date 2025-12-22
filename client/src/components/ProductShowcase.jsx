@@ -14,7 +14,7 @@ const ProductShowcase = () => {
   ];
 
   const getStatusColor = (status, dayIndex) => {
-    if (dayIndex >= currentDay) return 'bg-dark-700/50';
+    if (dayIndex >= currentDay) return 'bg-gray-300 dark:bg-dark-700/50';
     if (status === 1) return 'bg-emerald-500 shadow-emerald-500/50 shadow-sm';
     return 'bg-rose-500/70';
   };
@@ -35,7 +35,7 @@ const ProductShowcase = () => {
       }`}
     >
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900" />
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-900" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
@@ -43,11 +43,11 @@ const ProductShowcase = () => {
           <span className="inline-block px-4 py-1.5 glass rounded-full text-primary-400 text-sm font-medium mb-4">
             Product Preview
           </span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             Your Progress,{' '}
             <span className="gradient-text">Visualized</span>
           </h2>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             See your entire month at a glance. Track patterns, build streaks, and celebrate every win.
           </p>
         </div>
@@ -62,21 +62,21 @@ const ProductShowcase = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <div>
-                <h3 className="text-2xl font-bold text-white mb-1">November 2024</h3>
-                <p className="text-gray-400">Your habit tracking dashboard</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">November 2024</h3>
+                <p className="text-gray-600 dark:text-gray-400">Your habit tracking dashboard</p>
               </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-sm text-gray-400">Done</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Done</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-rose-500/70" />
-                  <span className="text-sm text-gray-400">Missed</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Missed</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-dark-700/50" />
-                  <span className="text-sm text-gray-400">Upcoming</span>
+                  <div className="w-3 h-3 rounded-full bg-gray-300 dark:bg-dark-700/50" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Upcoming</span>
                 </div>
               </div>
             </div>
@@ -86,13 +86,13 @@ const ProductShowcase = () => {
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="text-left text-sm font-semibold text-gray-300 pb-4 pr-4 min-w-[160px]">
+                    <th className="text-left text-sm font-semibold text-gray-700 dark:text-gray-300 pb-4 pr-4 min-w-[160px]">
                       Habit
                     </th>
                     {days.map((day) => (
                       <th
                         key={day}
-                        className={`text-center text-xs font-medium pb-4 w-7 ${day === currentDay ? 'text-primary-400' : 'text-gray-500'}`}
+                        className={`text-center text-xs font-medium pb-4 w-7 ${day === currentDay ? 'text-primary-400' : 'text-gray-500 dark:text-gray-500'}`}
                       >
                         {day}
                       </th>
@@ -105,7 +105,7 @@ const ProductShowcase = () => {
                       <td className="py-2 pr-4">
                         <div className="flex items-center gap-3">
                           <span className="text-xl">{habit.icon}</span>
-                          <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors">
+                          <span className="text-sm text-gray-900 dark:text-white font-medium group-hover:text-primary-400 transition-colors">
                             {habit.name}
                           </span>
                         </div>
@@ -126,15 +126,15 @@ const ProductShowcase = () => {
             </div>
 
             {/* Stats Row */}
-            <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="glass rounded-xl p-4 text-center hover:bg-white/10 transition-colors group cursor-pointer"
+                  className="glass rounded-xl p-4 text-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors group cursor-pointer"
                 >
                   <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">{stat.icon}</div>
                   <div className={`text-2xl sm:text-3xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
-                  <div className="text-sm text-gray-400">{stat.label}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -148,10 +148,10 @@ const ProductShowcase = () => {
             { icon: '🔥', title: 'Streak System', desc: 'Build momentum with consecutive day tracking' },
             { icon: '🏆', title: 'Earn Rewards', desc: 'Unlock badges and XP as you hit your goals' },
           ].map((item, i) => (
-            <div key={i} className="text-center p-6 glass rounded-2xl hover:bg-white/10 transition-colors">
+            <div key={i} className="text-center p-6 glass rounded-2xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
               <div className="text-4xl mb-4">{item.icon}</div>
-              <h4 className="text-lg font-semibold text-white mb-2">{item.title}</h4>
-              <p className="text-gray-400 text-sm">{item.desc}</p>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{item.desc}</p>
             </div>
           ))}
         </div>

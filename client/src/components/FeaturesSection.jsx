@@ -50,7 +50,7 @@ const FeaturesSection = () => {
       }`}
     >
       {/* Background */}
-      <div className="absolute inset-0 bg-dark-900" />
+      <div className="absolute inset-0 bg-white dark:bg-dark-900" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary-600/5 rounded-full blur-3xl" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,11 +59,11 @@ const FeaturesSection = () => {
           <span className="inline-block px-4 py-1.5 glass rounded-full text-primary-400 text-sm font-medium mb-4">
             Features
           </span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             Everything You Need to{' '}
             <span className="gradient-text">Succeed</span>
           </h2>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Powerful tools designed to keep you motivated, track your progress, and turn goals into habits.
           </p>
         </div>
@@ -73,7 +73,7 @@ const FeaturesSection = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative glass rounded-2xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
+              className="group relative glass rounded-2xl p-8 hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
             >
               {/* Hover glow effect */}
               <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-300`} />
@@ -84,10 +84,10 @@ const FeaturesSection = () => {
               </div>
 
               {/* Content */}
-              <h3 className="relative text-xl font-bold text-white mb-3 group-hover:text-primary-400 transition-colors">
+              <h3 className="relative text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-primary-400 transition-colors">
                 {feature.title}
               </h3>
-              <p className="relative text-gray-400 leading-relaxed">
+              <p className="relative text-gray-600 dark:text-gray-400 leading-relaxed">
                 {feature.description}
               </p>
 
@@ -107,13 +107,13 @@ const FeaturesSection = () => {
           <div className="inline-flex items-center gap-4 glass rounded-full px-6 py-3">
             <div className="flex -space-x-2">
               {['🧑‍💻', '👩‍🎨', '👨‍🔬', '👩‍💼'].map((emoji, i) => (
-                <div key={i} className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-sm border-2 border-dark-800">
+                <div key={i} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-dark-700 flex items-center justify-center text-sm border-2 border-gray-300 dark:border-dark-800">
                   {emoji}
                 </div>
               ))}
             </div>
-            <span className="text-gray-300">
-              Join <span className="text-white font-semibold">10,000+</span> people building better habits
+            <span className="text-gray-700 dark:text-gray-300">
+              Join <span className="text-gray-900 dark:text-white font-semibold">10,000+</span> people building better habits
             </span>
           </div>
         </div>
