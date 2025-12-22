@@ -36,12 +36,6 @@ const Header = () => {
             >
               How It Works
             </a>
-            <a
-              href="#pricing"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              Pricing
-            </a>
           </nav>
 
           {/* Right buttons */}
@@ -97,12 +91,6 @@ const Header = () => {
                 className="text-gray-300 hover:text-white transition-colors py-2"
               >
                 How It Works
-              </a>
-              <a
-                href="#pricing"
-                className="text-gray-300 hover:text-white transition-colors py-2"
-              >
-                Pricing
               </a>
               <div className="pt-2 flex flex-col space-y-2">
                 <Button variant="ghost" href="/login">

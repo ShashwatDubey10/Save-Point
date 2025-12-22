@@ -39,7 +39,7 @@ const CTASection = () => {
               </h2>
 
               <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-                Join thousands who've transformed their habits. Start your journey today — completely free, no credit card required.
+                Join thousands who've transformed their habits. Start your journey today — completely free with access to all features, no credit card required.
               </p>
 
               {/* CTA Buttons */}
@@ -64,9 +64,9 @@ const CTASection = () => {
               {/* Trust indicators */}
               <div className="flex flex-wrap items-center justify-center gap-8">
                 {[
-                  { icon: '✓', text: 'Free forever plan' },
+                  { icon: '✓', text: 'Free forever' },
+                  { icon: '✓', text: 'All features included' },
                   { icon: '✓', text: 'No credit card needed' },
-                  { icon: '✓', text: 'Cancel anytime' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2 text-gray-400">
                     <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
