@@ -60,27 +60,37 @@ const DraggableHabitCard = ({
   const handlePressMove = (e) => {
     if (!touchStartPosRef.current) return;
 
-    const currentPos = e.type.includes("touch")
-      ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-      : { x: e.clientX, y: e.clientY };
+    // Determine if it's a touch event
+    const isTouchEvent =
+      (e.type && (e.type === "touchmove" || e.type.includes("touch"))) ||
+      (e.touches && e.touches.length > 0);
+
+    const currentPos =
+      isTouchEvent && e.touches && e.touches.length > 0
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : { x: e.clientX, y: e.clientY };
 
     const deltaX = Math.abs(currentPos.x - touchStartPosRef.current.x);
     const deltaY = Math.abs(currentPos.y - touchStartPosRef.current.y);
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // If movement exceeds 10px threshold, it's a swipe
-    if (distance > 10) {
+    // If movement exceeds 5px threshold, it's definitely a swipe
+    if (distance > 5) {
       hasMovedRef.current = true;
       // Cancel long-press timer if user is swiping
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
       }
+      // Prevent default to stop scrolling when swiping
+      if (isTouchEvent) {
+        e.preventDefault();
+      }
     }
   };
 
   // Handle press end
-  const handlePressEnd = () => {
+  const handlePressEnd = (e) => {
     setIsPressed(false);
 
     // Clear long-press timer
@@ -89,14 +99,55 @@ const DraggableHabitCard = ({
       longPressTimerRef.current = null;
     }
 
-    // Check if it was a tap (quick AND no movement)
+    // Calculate final position and movement distance
+    // Always check final position to catch any movement, even if move events were missed
+    let finalPos = null;
+    if (e && touchStartPosRef.current) {
+      // Check if it's a touch event (touchend)
+      const isTouchEvent =
+        (e.type && (e.type === "touchend" || e.type.includes("touch"))) ||
+        (e.changedTouches && e.changedTouches.length > 0);
+
+      if (isTouchEvent && e.changedTouches && e.changedTouches.length > 0) {
+        // For touch events, use changedTouches (the touch that ended)
+        finalPos = {
+          x: e.changedTouches[0].clientX,
+          y: e.changedTouches[0].clientY,
+        };
+      } else if (e.clientX !== undefined && e.clientY !== undefined) {
+        // For mouse events
+        finalPos = {
+          x: e.clientX,
+          y: e.clientY,
+        };
+      }
+
+      // Calculate total movement distance from start to end
+      if (finalPos && touchStartPosRef.current) {
+        const deltaX = Math.abs(finalPos.x - touchStartPosRef.current.x);
+        const deltaY = Math.abs(finalPos.y - touchStartPosRef.current.y);
+        const totalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        // If movement exceeds 5px threshold, it's definitely a swipe, not a tap
+        if (totalDistance > 5) {
+          hasMovedRef.current = true;
+        }
+      }
+    }
+
+    // Check if it was a tap (quick AND no movement at all)
     const pressDuration = Date.now() - (dragStartTimeRef.current || 0);
-    const wasTap = pressDuration < 200 && !hasMovedRef.current && !isDragging;
+    const wasTap =
+      pressDuration < 300 &&
+      !hasMovedRef.current &&
+      !isDragging &&
+      touchStartPosRef.current !== null; // Ensure we had a valid start position
 
     // Reset movement tracking
     hasMovedRef.current = false;
     touchStartPosRef.current = null;
 
+    // Only trigger toggle if it was definitely a tap (no movement detected)
     if (wasTap) {
       // This was a tap, allow toggle
       const completed = isCompletedToday(habit);
