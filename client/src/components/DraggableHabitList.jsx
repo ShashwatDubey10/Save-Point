@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from "react";
 
 // Individual Draggable Habit Card
 const DraggableHabitCard = ({
@@ -9,21 +9,37 @@ const DraggableHabitCard = ({
   onToggle,
   onDragStart,
   isCompletedToday,
-  isDragging
+  isDragging,
 }) => {
   const [isPressed, setIsPressed] = useState(false);
   const longPressTimerRef = useRef(null);
   const dragStartTimeRef = useRef(null);
+  const touchStartPosRef = useRef(null);
+  const hasMovedRef = useRef(false);
 
   // Handle press start (both mouse and touch)
   const handlePressStart = (e, isTouchEvent) => {
     // Don't start drag if clicking buttons or checkbox
-    if (e.target.closest('button') || e.target.closest('.checkbox')) {
+    if (e.target.closest("button") || e.target.closest(".checkbox")) {
       return;
     }
 
     setIsPressed(true);
     dragStartTimeRef.current = Date.now();
+    hasMovedRef.current = false;
+
+    // Track initial touch position for swipe detection
+    if (isTouchEvent && e.touches && e.touches.length > 0) {
+      touchStartPosRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    } else {
+      touchStartPosRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+      };
+    }
 
     // For touch: wait 1 second before allowing drag
     if (isTouchEvent) {
@@ -40,6 +56,29 @@ const DraggableHabitCard = ({
     }
   };
 
+  // Handle touch/mouse move to detect swipes
+  const handlePressMove = (e) => {
+    if (!touchStartPosRef.current) return;
+
+    const currentPos = e.type.includes("touch")
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      : { x: e.clientX, y: e.clientY };
+
+    const deltaX = Math.abs(currentPos.x - touchStartPosRef.current.x);
+    const deltaY = Math.abs(currentPos.y - touchStartPosRef.current.y);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // If movement exceeds 10px threshold, it's a swipe
+    if (distance > 10) {
+      hasMovedRef.current = true;
+      // Cancel long-press timer if user is swiping
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
   // Handle press end
   const handlePressEnd = () => {
     setIsPressed(false);
@@ -50,9 +89,15 @@ const DraggableHabitCard = ({
       longPressTimerRef.current = null;
     }
 
-    // Check if it was a quick tap (less than 200ms)
+    // Check if it was a tap (quick AND no movement)
     const pressDuration = Date.now() - (dragStartTimeRef.current || 0);
-    if (pressDuration < 200 && !isDragging) {
+    const wasTap = pressDuration < 200 && !hasMovedRef.current && !isDragging;
+
+    // Reset movement tracking
+    hasMovedRef.current = false;
+    touchStartPosRef.current = null;
+
+    if (wasTap) {
       // This was a tap, allow toggle
       const completed = isCompletedToday(habit);
       onToggle(habit._id, completed);
@@ -62,6 +107,8 @@ const DraggableHabitCard = ({
   // Cancel drag on scroll or movement
   const handlePressCancel = () => {
     setIsPressed(false);
+    hasMovedRef.current = false;
+    touchStartPosRef.current = null;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -73,20 +120,22 @@ const DraggableHabitCard = ({
   return (
     <div
       className={`glass rounded-xl p-4 flex items-center gap-4 transition-all select-none ${
-        completed ? 'border border-green-500/30' : ''
-      } ${isDragging ? 'opacity-40 scale-95' : ''} ${
-        isPressed && !isDragging ? 'scale-98' : ''
-      } ${!isDragging ? 'hover:bg-white/10' : ''}`}
+        completed ? "border border-green-500/30" : ""
+      } ${isDragging ? "opacity-40 scale-95" : ""} ${
+        isPressed && !isDragging ? "scale-98" : ""
+      } ${!isDragging ? "hover:bg-white/10" : ""}`}
       style={{
-        cursor: isDragging ? 'grabbing' : 'grab',
-        touchAction: 'none',
+        cursor: isDragging ? "grabbing" : "grab",
+        touchAction: "none",
       }}
       // Mouse events
       onMouseDown={(e) => handlePressStart(e, false)}
+      onMouseMove={handlePressMove}
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressCancel}
       // Touch events
       onTouchStart={(e) => handlePressStart(e, true)}
+      onTouchMove={handlePressMove}
       onTouchEnd={handlePressEnd}
       onTouchCancel={handlePressCancel}
     >
@@ -101,8 +150,8 @@ const DraggableHabitCard = ({
       <div
         className={`checkbox w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
           completed
-            ? 'bg-green-500 border-green-500'
-            : 'border-white/30 hover:border-primary-500'
+            ? "bg-green-500 border-green-500"
+            : "border-white/30 hover:border-primary-500"
         }`}
         onClick={(e) => {
           e.stopPropagation();
@@ -110,22 +159,34 @@ const DraggableHabitCard = ({
         }}
       >
         {completed && (
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          <svg
+            className="w-4 h-4 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
         )}
       </div>
 
       {/* Icon */}
       <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
-        {habit.icon || '📌'}
+        {habit.icon || "📌"}
       </div>
 
       {/* Info */}
       <div className="flex-1">
-        <h3 className={`font-medium transition-all ${
-          completed ? 'text-gray-400 line-through' : 'text-white'
-        }`}>
+        <h3
+          className={`font-medium transition-all ${
+            completed ? "text-gray-400 line-through" : "text-white"
+          }`}
+        >
           {habit.title || habit.name}
         </h3>
         <p className="text-sm text-gray-500 capitalize">{habit.category}</p>
@@ -134,13 +195,13 @@ const DraggableHabitCard = ({
       {/* Streak */}
       <div className="flex items-center gap-1 px-3 py-1 bg-white/5 rounded-lg">
         <span className="text-orange-400">🔥</span>
-        <span className="text-white font-medium">{habit.stats?.currentStreak || 0}</span>
+        <span className="text-white font-medium">
+          {habit.stats?.currentStreak || 0}
+        </span>
       </div>
 
       {/* XP */}
-      <div className="text-primary-400 font-medium">
-        +10 XP
-      </div>
+      <div className="text-primary-400 font-medium">+10 XP</div>
 
       {/* Actions */}
       <div className="flex items-center gap-2">
@@ -152,8 +213,18 @@ const DraggableHabitCard = ({
           className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           title="Edit habit"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
           </svg>
         </button>
         <button
@@ -164,8 +235,18 @@ const DraggableHabitCard = ({
           className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
           title="Delete habit"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
           </svg>
         </button>
       </div>
@@ -180,7 +261,7 @@ const DraggableHabitList = ({
   onToggle,
   onEdit,
   onDelete,
-  isCompletedToday
+  isCompletedToday,
 }) => {
   const [dragState, setDragState] = useState({
     isDragging: false,
@@ -202,115 +283,129 @@ const DraggableHabitList = ({
   const itemRefs = useRef([]);
 
   // Handle drag start
-  const handleDragStart = useCallback((habit, index, e) => {
-    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+  const handleDragStart = useCallback(
+    (habit, index, e) => {
+      const clientY = e.type.includes("touch")
+        ? e.touches[0].clientY
+        : e.clientY;
 
-    // Update both state and ref
-    const newDragData = {
-      isDragging: true,
-      draggedHabit: habit,
-      draggedIndex: index,
-      currentY: clientY,
-      targetIndex: index,
-    };
-
-    dragDataRef.current = newDragData;
-    setDragState(newDragData);
-
-    // Define handlers as closures that access refs
-    const handleMove = (e) => {
-      if (!dragDataRef.current.isDragging) return;
-
-      // Prevent scrolling on touch devices
-      if (e.type.includes('touch')) {
-        e.preventDefault();
-      }
-
-      const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-
-      // Calculate which position the item should be in
-      let targetIndex = dragDataRef.current.draggedIndex;
-
-      itemRefs.current.forEach((ref, i) => {
-        if (i === dragDataRef.current.draggedIndex || !ref) return;
-
-        const rect = ref.getBoundingClientRect();
-        const itemMiddle = rect.top + rect.height / 2;
-
-        if (clientY < itemMiddle && i < dragDataRef.current.draggedIndex) {
-          targetIndex = i;
-        } else if (clientY > itemMiddle && i > dragDataRef.current.draggedIndex) {
-          targetIndex = i;
-        }
-      });
-
-      // Update both ref and state
-      dragDataRef.current = {
-        ...dragDataRef.current,
+      // Update both state and ref
+      const newDragData = {
+        isDragging: true,
+        draggedHabit: habit,
+        draggedIndex: index,
         currentY: clientY,
-        targetIndex,
+        targetIndex: index,
       };
 
-      setDragState({
-        ...dragDataRef.current,
-      });
-    };
+      dragDataRef.current = newDragData;
+      setDragState(newDragData);
 
-    const handleEnd = () => {
-      // Remove event listeners
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleEnd);
-      document.removeEventListener('touchmove', handleMove);
-      document.removeEventListener('touchend', handleEnd);
+      // Define handlers as closures that access refs
+      const handleMove = (e) => {
+        if (!dragDataRef.current.isDragging) return;
 
-      // Reorder habits if position changed
-      const { draggedIndex, targetIndex } = dragDataRef.current;
+        // Prevent scrolling on touch devices
+        if (e.type.includes("touch")) {
+          e.preventDefault();
+        }
 
-      if (draggedIndex !== null && targetIndex !== null && draggedIndex !== targetIndex) {
-        const newHabits = [...habits];
-        const [draggedHabit] = newHabits.splice(draggedIndex, 1);
-        newHabits.splice(targetIndex, 0, draggedHabit);
-        onReorder(newHabits);
+        const clientY = e.type.includes("touch")
+          ? e.touches[0].clientY
+          : e.clientY;
+
+        // Calculate which position the item should be in
+        let targetIndex = dragDataRef.current.draggedIndex;
+
+        itemRefs.current.forEach((ref, i) => {
+          if (i === dragDataRef.current.draggedIndex || !ref) return;
+
+          const rect = ref.getBoundingClientRect();
+          const itemMiddle = rect.top + rect.height / 2;
+
+          if (clientY < itemMiddle && i < dragDataRef.current.draggedIndex) {
+            targetIndex = i;
+          } else if (
+            clientY > itemMiddle &&
+            i > dragDataRef.current.draggedIndex
+          ) {
+            targetIndex = i;
+          }
+        });
+
+        // Update both ref and state
+        dragDataRef.current = {
+          ...dragDataRef.current,
+          currentY: clientY,
+          targetIndex,
+        };
+
+        setDragState({
+          ...dragDataRef.current,
+        });
+      };
+
+      const handleEnd = () => {
+        // Remove event listeners
+        document.removeEventListener("mousemove", handleMove);
+        document.removeEventListener("mouseup", handleEnd);
+        document.removeEventListener("touchmove", handleMove);
+        document.removeEventListener("touchend", handleEnd);
+
+        // Reorder habits if position changed
+        const { draggedIndex, targetIndex } = dragDataRef.current;
+
+        if (
+          draggedIndex !== null &&
+          targetIndex !== null &&
+          draggedIndex !== targetIndex
+        ) {
+          const newHabits = [...habits];
+          const [draggedHabit] = newHabits.splice(draggedIndex, 1);
+          newHabits.splice(targetIndex, 0, draggedHabit);
+          onReorder(newHabits);
+        }
+
+        // Reset state
+        dragDataRef.current = {
+          isDragging: false,
+          draggedHabit: null,
+          draggedIndex: null,
+          currentY: 0,
+          targetIndex: null,
+        };
+
+        setDragState({
+          isDragging: false,
+          draggedHabit: null,
+          draggedIndex: null,
+          currentY: 0,
+        });
+      };
+
+      // Add event listeners
+      if (e.type.includes("touch")) {
+        document.addEventListener("touchmove", handleMove, { passive: false });
+        document.addEventListener("touchend", handleEnd);
+      } else {
+        document.addEventListener("mousemove", handleMove);
+        document.addEventListener("mouseup", handleEnd);
       }
-
-      // Reset state
-      dragDataRef.current = {
-        isDragging: false,
-        draggedHabit: null,
-        draggedIndex: null,
-        currentY: 0,
-        targetIndex: null,
-      };
-
-      setDragState({
-        isDragging: false,
-        draggedHabit: null,
-        draggedIndex: null,
-        currentY: 0,
-      });
-    };
-
-    // Add event listeners
-    if (e.type.includes('touch')) {
-      document.addEventListener('touchmove', handleMove, { passive: false });
-      document.addEventListener('touchend', handleEnd);
-    } else {
-      document.addEventListener('mousemove', handleMove);
-      document.addEventListener('mouseup', handleEnd);
-    }
-  }, [habits, onReorder]);
+    },
+    [habits, onReorder]
+  );
 
   // Calculate transform for shifting items
   const getTransform = (index) => {
     const { isDragging, draggedIndex, targetIndex } = dragState;
 
     if (!isDragging || draggedIndex === null || targetIndex === null) {
-      return 'translateY(0)';
+      return "translateY(0)";
     }
 
     // Don't transform the dragged item
     if (index === draggedIndex) {
-      return 'translateY(0)';
+      return "translateY(0)";
     }
 
     // Items between old and new position should shift
@@ -328,7 +423,7 @@ const DraggableHabitList = ({
       }
     }
 
-    return 'translateY(0)';
+    return "translateY(0)";
   };
 
   return (
@@ -340,7 +435,10 @@ const DraggableHabitList = ({
             ref={(el) => (itemRefs.current[index] = el)}
             style={{
               transform: getTransform(index),
-              transition: dragState.isDragging && index !== dragState.draggedIndex ? 'transform 0.3s ease' : 'none',
+              transition:
+                dragState.isDragging && index !== dragState.draggedIndex
+                  ? "transform 0.3s ease"
+                  : "none",
             }}
           >
             <DraggableHabitCard
@@ -363,22 +461,25 @@ const DraggableHabitList = ({
           ref={dragGhostRef}
           className="fixed pointer-events-none z-50"
           style={{
-            left: '50%',
+            left: "50%",
             top: dragState.currentY,
-            transform: 'translate(-50%, -50%) scale(1.05)',
+            transform: "translate(-50%, -50%) scale(1.05)",
             opacity: 0.9,
-            width: itemRefs.current[dragState.draggedIndex]?.offsetWidth || 'auto',
+            width:
+              itemRefs.current[dragState.draggedIndex]?.offsetWidth || "auto",
           }}
         >
           <div className="glass rounded-xl p-4 shadow-2xl ring-2 ring-primary-500 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
-              {dragState.draggedHabit.icon || '📌'}
+              {dragState.draggedHabit.icon || "📌"}
             </div>
             <div className="flex-1">
               <h3 className="text-white font-medium">
                 {dragState.draggedHabit.title || dragState.draggedHabit.name}
               </h3>
-              <p className="text-sm text-gray-400 capitalize">{dragState.draggedHabit.category}</p>
+              <p className="text-sm text-gray-400 capitalize">
+                {dragState.draggedHabit.category}
+              </p>
             </div>
           </div>
         </div>
