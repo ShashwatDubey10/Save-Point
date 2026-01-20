@@ -65,10 +65,6 @@ const DraggableHabitCard = ({
           }
           isDraggingRef.current = true;
           setIsLocalDragging(true);
-          // Immediately update touchAction to prevent scrolling
-          if (cardElementRef.current) {
-            cardElementRef.current.style.touchAction = 'none';
-          }
           // Create a synthetic event-like object for onDragStart
           // Use stored touch position - the parent will use current position from touchmove events
           const syntheticEvent = {
@@ -99,11 +95,7 @@ const DraggableHabitCard = ({
     // If dragging is active, let document-level handlers take over completely
     // Don't process anything here to avoid interference
     if (isDraggingRef.current || isDragging) {
-      // Still prevent default to stop scrolling
-      if (e.type && (e.type === "touchmove" || e.type.includes("touch"))) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      // Only prevent default when actually dragging - document handler will handle it
       return;
     }
 
@@ -128,13 +120,19 @@ const DraggableHabitCard = ({
       hasMovedRef.current = true;
       
       if (isTouchEvent && !isDraggingRef.current) {
-        // Only cancel long-press if movement is primarily vertical (scrolling intent)
-        // Allow small movements or horizontal movements (drag intent)
-        // This allows users to hold still or move slightly while waiting for drag to activate
-        if (distance > 30 && deltaY > deltaX * 1.5 && longPressTimerRef.current) {
-          // Primarily vertical movement suggests scrolling - cancel drag
+        // Cancel long-press if movement is primarily vertical (scrolling intent)
+        // This allows normal scrolling without activating drag
+        if (distance > 15 && deltaY > deltaX * 1.2 && longPressTimerRef.current) {
+          // Primarily vertical movement suggests scrolling - cancel drag immediately
           clearTimeout(longPressTimerRef.current);
           longPressTimerRef.current = null;
+          // Reset press state to allow normal scrolling
+          setIsPressed(false);
+          isPressedRef.current = false;
+          // Clear touch start position so handler doesn't process further
+          touchStartPosRef.current = null;
+          // Return early to let browser handle scrolling naturally
+          return;
         }
         // Small movements or horizontal movements don't cancel - allows drag to activate
       }
@@ -147,10 +145,6 @@ const DraggableHabitCard = ({
     isPressedRef.current = false;
     isDraggingRef.current = false;
     setIsLocalDragging(false);
-    // Reset touchAction
-    if (cardElementRef.current) {
-      cardElementRef.current.style.touchAction = '';
-    }
 
     // Clear long-press timer
     if (longPressTimerRef.current) {
@@ -222,10 +216,6 @@ const DraggableHabitCard = ({
     setIsLocalDragging(false);
     hasMovedRef.current = false;
     touchStartPosRef.current = null;
-    // Reset touchAction
-    if (cardElementRef.current) {
-      cardElementRef.current.style.touchAction = '';
-    }
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -237,15 +227,6 @@ const DraggableHabitCard = ({
     if (!isDragging) {
       setIsLocalDragging(false);
       isDraggingRef.current = false;
-      // Reset touchAction when drag ends
-      if (cardElementRef.current) {
-        cardElementRef.current.style.touchAction = '';
-      }
-    } else {
-      // Ensure touchAction is none when dragging
-      if (cardElementRef.current) {
-        cardElementRef.current.style.touchAction = 'none';
-      }
     }
   }, [isDragging]);
 
@@ -276,6 +257,7 @@ const DraggableHabitCard = ({
           e.stopPropagation();
           return;
         }
+        // Don't prevent default - allow normal touch behavior
         handlePressStart(e, true);
       }}
       onTouchMove={handlePressMove}
