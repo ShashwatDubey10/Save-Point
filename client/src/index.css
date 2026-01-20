@@ -327,3 +327,122 @@ a[href],
 .animate-text-glow {
   animation: text-glow 2s ease-in-out infinite;
 }
+
+/* Global Custom Scrollbar Styling for Dark Theme */
+/* Apply to html and body for global page scrolling */
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.5) rgba(255, 255, 255, 0.05);
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.7);
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-button,
+body::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Apply to all elements with overflow (scrollable containers) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.5) rgba(255, 255, 255, 0.05);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.7);
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Specific class for habit tracker (kept for backward compatibility) */
+.habit-tracker-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.5) rgba(255, 255, 255, 0.05);
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.7);
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar-corner {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.habit-tracker-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}

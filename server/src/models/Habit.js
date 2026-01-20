@@ -183,50 +183,56 @@ habitSchema.methods.uncomplete = function() {
   return true;
 };
 
-// Helper to get YYYY-MM-DD string from a date (using local date components)
+// Helper to get YYYY-MM-DD string from a date
+// Uses UTC methods to ensure consistent date extraction regardless of server timezone
 function getDateString(date) {
   if (!date) return null;
   const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  // Use UTC methods to extract the calendar date that was stored
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
-// Method to normalise a date input (string or Date) to a local midnight Date
+// Method to normalise a date input (string or Date) to a Date that preserves calendar date when stored as UTC
+// Uses UTC noon to prevent date shifts when stored in MongoDB (which stores as UTC)
 function normaliseToLocalDate(targetDate) {
   if (!targetDate) return null;
 
-  // If it's a string in YYYY-MM-DD format, parse as local date (not UTC)
+  let year, month, day;
+
+  // If it's a string in YYYY-MM-DD format, parse directly
   if (typeof targetDate === 'string') {
     const parts = targetDate.split('-');
     if (parts.length === 3) {
-      const year = Number(parts[0]);
-      const month = Number(parts[1]) - 1; // 0-based
-      const day = Number(parts[2]);
-      const d = new Date(year, month, day);
-      d.setHours(0, 0, 0, 0);
-      return d;
+      year = Number(parts[0]);
+      month = Number(parts[1]) - 1; // 0-based
+      day = Number(parts[2]);
+    } else {
+      // Fallback for other string formats
+      const d = new Date(targetDate);
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
     }
+  } else if (targetDate instanceof Date) {
+    // Extract local date components
+    year = targetDate.getFullYear();
+    month = targetDate.getMonth();
+    day = targetDate.getDate();
+  } else {
+    // Fallback
+    const d = new Date(targetDate);
+    year = d.getFullYear();
+    month = d.getMonth();
+    day = d.getDate();
   }
 
-  // If it's already a Date, extract local date components and create new date
-  if (targetDate instanceof Date) {
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth();
-    const day = targetDate.getDate();
-    const d = new Date(year, month, day);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-
-  // Fallback – let JS parse, then extract local components
-  const d = new Date(targetDate);
-  const year = d.getFullYear();
-  const month = d.getMonth();
-  const day = d.getDate();
-  const normalized = new Date(year, month, day);
-  normalized.setHours(0, 0, 0, 0);
+  // Create date at UTC midnight for the target calendar date
+  // This ensures the calendar date is preserved when stored in MongoDB
+  // When read back, we'll use UTC methods to extract the date components
+  const normalized = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
   return normalized;
 }
 

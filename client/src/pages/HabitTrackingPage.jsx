@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
@@ -12,7 +12,10 @@ const HabitTrackingPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('month'); // 'month' or 'week'
+  const [selectedDay, setSelectedDay] = useState(null);
+  
+  // Single scroll container ref for perfect synchronization
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     fetchHabits();
@@ -30,6 +33,34 @@ const HabitTrackingPage = () => {
     }
   };
 
+  // Helper to get YYYY-MM-DD string from a date
+  // Uses UTC methods for dates from backend (stored as UTC) to ensure correct calendar date
+  // Uses local methods for dates created locally (for display/UI)
+  const getDateString = (date, useUTC = false) => {
+    if (useUTC) {
+      // For dates from backend (stored as UTC), extract UTC components
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else {
+      // For local dates (created in UI), use local components
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  };
+
+  // Helper to create a date for a specific day in the current month
+  const getDateForDay = (day) => {
+    return new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      day
+    );
+  };
+
   // Get days in current month
   const daysInMonth = new Date(
     currentDate.getFullYear(),
@@ -38,9 +69,12 @@ const HabitTrackingPage = () => {
   ).getDate();
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const currentDay = new Date().getDate();
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  
+  // Get current date info using the same logic
+  const now = new Date();
+  const currentDay = now.getDate();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
   const isCurrentMonth =
     currentDate.getMonth() === currentMonth &&
@@ -54,21 +88,13 @@ const HabitTrackingPage = () => {
   const monthName = monthNames[currentDate.getMonth()];
   const year = currentDate.getFullYear();
 
-  // Helper to get YYYY-MM-DD string from a date (local timezone)
-  const getDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // Fixed column widths for perfect alignment
+  const HABIT_COLUMN_WIDTH = 200; // Fixed width for habit name column
+  const DATE_COLUMN_WIDTH = 48; // Fixed width for each date column
 
   // Check if habit is completed for a specific date
   const isCompletedForDate = (habit, day) => {
-    const targetDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    );
+    const targetDate = getDateForDay(day);
     const targetDateString = getDateString(targetDate);
 
     // Check if habit was created after this date
@@ -83,9 +109,11 @@ const HabitTrackingPage = () => {
     }
 
     // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
+    // Use UTC for backend dates, local for UI dates
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      const completionDateString = getDateString(completionDate);
+      // Backend dates are stored as UTC, so extract UTC components
+      const completionDateString = getDateString(completionDate, true);
       return completionDateString === targetDateString;
     });
 
@@ -94,11 +122,7 @@ const HabitTrackingPage = () => {
 
   // Toggle habit completion for a specific date
   const toggleHabitForDate = async (habit, day) => {
-    const targetDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    );
+    const targetDate = getDateForDay(day);
     targetDate.setHours(0, 0, 0, 0);
 
     // Check if habit was created after this date
@@ -135,51 +159,87 @@ const HabitTrackingPage = () => {
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setSelectedDay(null);
   };
 
   const goToNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setSelectedDay(null);
   };
 
   const goToCurrentMonth = () => {
     setCurrentDate(new Date());
+    setSelectedDay(null);
   };
 
-  const getStatusColor = (isCompleted, day, habit) => {
-    const targetDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    );
+  // Get status and styling for a date cell
+  const getDateCellStatus = (habit, day) => {
+    const targetDate = getDateForDay(day);
     const habitCreatedDate = new Date(habit.createdAt);
     habitCreatedDate.setHours(0, 0, 0, 0);
     targetDate.setHours(0, 0, 0, 0);
 
+    // Check if habit was created after this date
     if (habitCreatedDate > targetDate) {
-      return 'bg-blue-500/20 cursor-not-allowed'; // Not applicable
+      return {
+        type: 'not-created',
+        isCompleted: false,
+        isClickable: false,
+        className: 'bg-blue-500/20 cursor-not-allowed opacity-50'
+      };
     }
 
-    // Current day special handling
-    if (isCurrentMonth && day === currentDay) {
-      if (isCompleted) {
-        return 'bg-emerald-400 shadow-emerald-400/60 shadow-lg cursor-pointer hover:scale-110 ring-2 ring-emerald-300';
-      } else {
-        return 'bg-amber-500/50 cursor-pointer hover:scale-110 ring-2 ring-amber-400/50';
-      }
+    const isCompleted = isCompletedForDate(habit, day);
+    const isToday = isCurrentMonth && day === currentDay;
+    const isFuture = isCurrentMonth && day > currentDay;
+    const isSelected = selectedDay === day;
+
+    if (isToday) {
+      return {
+        type: 'today',
+        isCompleted: isCompleted === true,
+        isClickable: true,
+        className: isCompleted
+          ? 'bg-emerald-500 shadow-emerald-500/60 shadow-lg cursor-pointer hover:scale-110 ring-2 ring-emerald-300 ring-offset-2 ring-offset-dark-800'
+          : 'bg-amber-500 shadow-amber-500/40 shadow-md cursor-pointer hover:scale-110 ring-2 ring-amber-400 ring-offset-2 ring-offset-dark-800'
+      };
     }
 
-    // Future dates
-    if (isCurrentMonth && day > currentDay) {
-      return 'bg-dark-700/50 cursor-not-allowed';
+    if (isFuture) {
+      return {
+        type: 'future',
+        isCompleted: false,
+        isClickable: false,
+        className: 'bg-dark-700/50 cursor-not-allowed opacity-60'
+      };
     }
 
-    // Completed (past days)
+    if (isSelected) {
+      return {
+        type: 'selected',
+        isCompleted: isCompleted === true,
+        isClickable: true,
+        className: isCompleted
+          ? 'bg-emerald-500 shadow-emerald-500/50 shadow-sm cursor-pointer hover:scale-110 ring-2 ring-primary-400 ring-offset-1 ring-offset-dark-800'
+          : 'bg-rose-500/70 shadow-rose-500/30 shadow-sm cursor-pointer hover:scale-110 ring-2 ring-primary-400 ring-offset-1 ring-offset-dark-800'
+      };
+    }
+
     if (isCompleted) {
-      return 'bg-emerald-500 shadow-emerald-500/50 shadow-sm cursor-pointer hover:scale-110';
+      return {
+        type: 'completed',
+        isCompleted: true,
+        isClickable: true,
+        className: 'bg-emerald-500 shadow-emerald-500/50 shadow-sm cursor-pointer hover:scale-110'
+      };
     }
 
-    // Missed (past days)
-    return 'bg-rose-500/70 cursor-pointer hover:scale-110';
+    return {
+      type: 'missed',
+      isCompleted: false,
+      isClickable: true,
+      className: 'bg-rose-500/70 cursor-pointer hover:scale-110'
+    };
   };
 
   if (loading) {
@@ -189,6 +249,9 @@ const HabitTrackingPage = () => {
       </div>
     );
   }
+
+  // Calculate total width for the grid
+  const totalWidth = HABIT_COLUMN_WIDTH + (days.length * DATE_COLUMN_WIDTH);
 
   return (
     <div className="min-h-screen bg-dark-900">
@@ -276,7 +339,7 @@ const HabitTrackingPage = () => {
               <span className="text-sm text-gray-400">Missed</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-amber-500/50" />
+              <div className="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-400" />
               <span className="text-sm text-gray-400">Today (Pending)</span>
             </div>
             <div className="flex items-center gap-2">
@@ -286,6 +349,10 @@ const HabitTrackingPage = () => {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500/20" />
               <span className="text-sm text-gray-400">Not Created</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary-400 ring-2 ring-primary-400" />
+              <span className="text-sm text-gray-400">Selected</span>
             </div>
           </div>
         </div>
@@ -304,90 +371,146 @@ const HabitTrackingPage = () => {
             </Link>
           </div>
         ) : (
-          <div className="glass rounded-xl p-4 sm:p-6 overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr>
-                  <th className="text-left text-sm font-semibold text-gray-300 pb-4 pr-4 min-w-[180px] sticky left-0 bg-dark-800/95 z-10">
-                    Habit
-                  </th>
-                  {days.map((day) => (
-                    <th
-                      key={day}
-                      className={`text-center text-xs font-medium pb-4 px-1 w-10 ${
-                        isCurrentMonth && day === currentDay
-                          ? 'text-primary-400 font-bold'
-                          : 'text-gray-500'
-                      }`}
-                    >
-                      {day}
-                    </th>
+          <div className="glass rounded-xl overflow-hidden">
+            {/* Single Scroll Container - Perfect Synchronization */}
+            <div
+              ref={scrollContainerRef}
+              className="habit-tracker-scrollbar overflow-x-auto overflow-y-auto max-h-[70vh]"
+            >
+              {/* Table with Exact Column Widths */}
+              <table
+                className="w-full"
+                style={{
+                  minWidth: `${totalWidth}px`,
+                  tableLayout: 'fixed'
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: `${HABIT_COLUMN_WIDTH}px` }} />
+                  {days.map(() => (
+                    <col key={`col-${Math.random()}`} style={{ width: `${DATE_COLUMN_WIDTH}px` }} />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {habits.map((habit, habitIndex) => (
-                  <tr key={habit._id || habitIndex} className="group">
-                    <td className="py-3 pr-4 sticky left-0 bg-dark-800/95 z-10">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{habit.icon || '📌'}</span>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors block truncate">
-                            {habit.title || habit.name}
-                          </span>
-                          {habit.category && (
-                            <span className="text-xs text-gray-500 capitalize">
-                              {habit.category}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                </colgroup>
+                <thead>
+                  <tr>
+                    {/* Sticky Habit Name Header */}
+                    <th
+                      className="sticky left-0 z-30 bg-dark-800/98 backdrop-blur-sm px-4 py-4 border-b border-r border-white/10 text-left"
+                      style={{
+                        width: `${HABIT_COLUMN_WIDTH}px`
+                      }}
+                    >
+                      <span className="text-sm font-semibold text-gray-300">Habit</span>
+                    </th>
+                    {/* Date Headers */}
                     {days.map((day) => {
-                      const isCompleted = isCompletedForDate(habit, day);
-                      const isApplicable = isCompleted !== null;
-                      const statusColor = isApplicable
-                        ? getStatusColor(isCompleted, day, habit)
-                        : 'bg-blue-500/20 cursor-not-allowed';
-
+                      const isToday = isCurrentMonth && day === currentDay;
+                      const isSelected = selectedDay === day;
                       return (
-                        <td key={day} className="py-3 px-1">
-                          <div
-                            className={`w-8 h-8 rounded-md mx-auto transition-all duration-200 flex items-center justify-center ${statusColor} ${
-                              isCurrentMonth && day === currentDay
-                                ? 'ring-2 ring-primary-400 ring-offset-2 ring-offset-dark-800'
-                                : ''
-                            }`}
-                            onClick={() => {
-                              if (isApplicable && (isCurrentMonth ? day <= currentDay : true)) {
-                                toggleHabitForDate(habit, day);
-                              }
-                            }}
-                            title={`${habit.title || habit.name} - ${monthName} ${day}, ${year}`}
-                          >
-                            {isCompleted && (
-                              <svg
-                                className="w-4 h-4 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            )}
-                          </div>
-                        </td>
+                        <th
+                          key={`header-${day}`}
+                          className={`border-b border-white/10 text-center py-4 px-2 ${
+                            isToday
+                              ? 'text-primary-400 font-bold bg-primary-500/10'
+                              : isSelected
+                              ? 'text-primary-300 font-semibold bg-primary-500/20 ring-2 ring-primary-400/50'
+                              : 'text-gray-500'
+                          }`}
+                          style={{
+                            width: `${DATE_COLUMN_WIDTH}px`
+                          }}
+                        >
+                          <span className="text-xs font-medium">{day}</span>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {habits.map((habit, habitIndex) => (
+                    <tr
+                      key={`habit-${habit._id || habitIndex}`}
+                      className="group hover:bg-white/5 transition-colors"
+                    >
+                      {/* Sticky Habit Name Column */}
+                      <td
+                        className="sticky left-0 z-20 bg-dark-800/98 backdrop-blur-sm px-4 py-3 border-b border-r border-white/5"
+                        style={{
+                          width: `${HABIT_COLUMN_WIDTH}px`
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl shrink-0">{habit.icon || '📌'}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors block truncate">
+                              {habit.title || habit.name}
+                            </span>
+                            {habit.category && (
+                              <span className="text-xs text-gray-500 capitalize">
+                                {habit.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Date Cells */}
+                      {days.map((day) => {
+                        const cellStatus = getDateCellStatus(habit, day);
+                        const isToday = isCurrentMonth && day === currentDay;
+                        const isSelected = selectedDay === day;
+
+                        return (
+                          <td
+                            key={`cell-${habit._id || habitIndex}-${day}`}
+                            className={`border-b border-white/5 py-3 px-2 ${
+                              isSelected ? 'bg-primary-500/10' : ''
+                            }`}
+                            style={{
+                              width: `${DATE_COLUMN_WIDTH}px`
+                            }}
+                            onClick={() => {
+                              if (cellStatus.isClickable) {
+                                setSelectedDay(day);
+                                toggleHabitForDate(habit, day);
+                              }
+                            }}
+                            onMouseEnter={() => {
+                              if (cellStatus.isClickable) {
+                                setSelectedDay(day);
+                              }
+                            }}
+                            title={`${habit.title || habit.name} - ${monthName} ${day}, ${year}${isToday ? ' (Today)' : ''}`}
+                          >
+                            <div className="flex items-center justify-center">
+                              <div
+                                className={`w-8 h-8 rounded-md transition-all duration-200 flex items-center justify-center ${cellStatus.className}`}
+                              >
+                                {cellStatus.isCompleted && (
+                                  <svg
+                                    className="w-4 h-4 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={3}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>
