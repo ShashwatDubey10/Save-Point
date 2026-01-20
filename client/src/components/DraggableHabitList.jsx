@@ -82,20 +82,29 @@ const DraggableHabitCard = ({
 
   // Handle drag handle end
   const handleDragHandleEnd = (e) => {
+    // If dragging is active, let document-level handler take over (don't stop propagation)
+    if (isDraggingRef.current || isDragging) {
+      // Don't stop propagation - document handler needs touchend/mouseup to complete drop
+      return;
+    }
+    
+    // Only handle if not dragging (e.g., quick tap on handle)
     e.stopPropagation();
     setIsPressed(false);
     isPressedRef.current = false;
-    isDraggingRef.current = false;
-    setIsLocalDragging(false);
     touchStartPosRef.current = null;
   };
 
   // Cancel drag handle interaction
   const handleDragHandleCancel = () => {
+    // If dragging is active, let document-level handler take over
+    if (isDraggingRef.current || isDragging) {
+      return;
+    }
+    
+    // Only reset if not dragging
     setIsPressed(false);
     isPressedRef.current = false;
-    isDraggingRef.current = false;
-    setIsLocalDragging(false);
     touchStartPosRef.current = null;
   };
 
@@ -356,11 +365,12 @@ const DraggableHabitList = ({
       };
 
       const handleEnd = () => {
-        // Remove event listeners
-        document.removeEventListener("mousemove", handleMove);
-        document.removeEventListener("mouseup", handleEnd);
-        document.removeEventListener("touchmove", handleMove);
-        document.removeEventListener("touchend", handleEnd);
+        // Remove event listeners - must match capture option
+        document.removeEventListener("mousemove", handleMove, { capture: true });
+        document.removeEventListener("mouseup", handleEnd, { capture: true });
+        document.removeEventListener("touchmove", handleMove, { capture: true });
+        document.removeEventListener("touchend", handleEnd, { capture: true });
+        document.removeEventListener("touchcancel", handleEnd, { capture: true });
 
         // Reorder habits if position changed
         const { draggedIndex, targetIndex } = dragDataRef.current;
@@ -393,13 +403,14 @@ const DraggableHabitList = ({
         });
       };
 
-      // Add event listeners
+      // Add event listeners - use capture phase to catch events before handle handlers
       if (e.type.includes("touch")) {
-        document.addEventListener("touchmove", handleMove, { passive: false });
-        document.addEventListener("touchend", handleEnd);
+        document.addEventListener("touchmove", handleMove, { passive: false, capture: true });
+        document.addEventListener("touchend", handleEnd, { passive: false, capture: true });
+        document.addEventListener("touchcancel", handleEnd, { passive: false, capture: true });
       } else {
-        document.addEventListener("mousemove", handleMove);
-        document.addEventListener("mouseup", handleEnd);
+        document.addEventListener("mousemove", handleMove, { capture: true });
+        document.addEventListener("mouseup", handleEnd, { capture: true });
       }
     },
     [habits, onReorder]
