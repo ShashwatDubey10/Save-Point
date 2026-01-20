@@ -7,6 +7,7 @@ import AppNavigation from '../components/AppNavigation';
 import NoteCard from '../components/NoteCard';
 import NoteModal from '../components/NoteModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { PageContainer, MainContent, PageHeader, ErrorMessage, LoadingSpinner, EmptyState, Grid } from '../utils/pageLayout';
 
 const NotesPage = () => {
   const { user } = useAuth();
@@ -104,45 +105,28 @@ const NotesPage = () => {
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
-        <AppHeader />
-        <AppNavigation />
-        {/* Mobile-first padding: account for header + bottom nav */}
-        <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-          </div>
-        </main>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
+    <PageContainer>
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content - Mobile-first padding */}
-      <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
+      <MainContent>
+        <PageHeader
+          title="My Notes 📝"
+          description="Click on a note to view and edit it"
+          actionLabel="New Note"
+          actionOnClick={handleCreateNote}
+        />
 
-        {/* Header - Responsive text sizes */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-            My Notes 📝
-          </h1>
-          <p className="text-sm sm:text-base text-gray-400">
-            Click on a note to view and edit it
-          </p>
-        </div>
-
-        {/* Error Message */}
         {error && (
-          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
             {error}
             <button
               onClick={fetchNotes}
-              className="ml-2 sm:ml-4 text-xs sm:text-sm underline hover:text-red-300"
+              className="ml-4 text-sm underline hover:text-red-300"
             >
               Retry
             </button>
@@ -224,25 +208,13 @@ const NotesPage = () => {
 
         {/* Notes Grid - Mobile-first: 1 column, scales up */}
         {filteredNotes.length === 0 ? (
-          <div className="glass rounded-xl p-8 sm:p-12 text-center">
-            <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">📝</div>
-            <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
-              {searchQuery ? 'No notes found' : 'No notes yet'}
-            </h3>
-            <p className="text-sm sm:text-base text-gray-400 mb-4 sm:mb-6">
-              {searchQuery
-                ? 'Try adjusting your search'
-                : 'Click "New Note" to create your first note!'}
-            </p>
-            {!searchQuery && (
-              <button
-                onClick={handleCreateNote}
-                className="touch-target px-5 sm:px-6 py-2.5 sm:py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors font-medium text-sm sm:text-base"
-              >
-                Create Your First Note
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon="📝"
+            title={searchQuery ? 'No notes found' : 'No notes yet'}
+            description={searchQuery ? 'Try adjusting your search' : 'Click "New Note" to create your first note!'}
+            actionLabel={!searchQuery ? 'Create Your First Note' : undefined}
+            actionOnClick={!searchQuery ? handleCreateNote : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {filteredNotes.map((note) => (
@@ -255,7 +227,7 @@ const NotesPage = () => {
             ))}
           </div>
         )}
-      </main>
+      </MainContent>
 
       {/* Note Modal */}
       <NoteModal
@@ -282,7 +254,7 @@ const NotesPage = () => {
         cancelText="Cancel"
         isDestructive={true}
       />
-    </div>
+    </PageContainer>
   );
 };
 

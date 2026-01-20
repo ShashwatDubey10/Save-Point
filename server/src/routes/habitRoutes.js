@@ -7,6 +7,8 @@ import {
   deleteHabit,
   completeHabit,
   uncompleteHabit,
+  completeHabitForDate,
+  uncompleteHabitForDate,
   getHabitStats,
   getHabitHistory,
   reorderHabits
@@ -43,6 +45,8 @@ router.route('/:id')
 // Completion routes
 router.post('/:id/complete', idValidation, validate, completeHabit);
 router.post('/:id/uncomplete', idValidation, validate, uncompleteHabit);
+router.post('/:id/complete-date', idValidation, validate, completeHabitForDate);
+router.post('/:id/uncomplete-date', idValidation, validate, uncompleteHabitForDate);
 
 // History route
 router.get('/:id/history', idValidation, validate, getHabitHistory);

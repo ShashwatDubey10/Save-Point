@@ -8,6 +8,8 @@ import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
+import { PageContainer, MainContent, PageHeader, ErrorMessage, LoadingSpinner, EmptyState } from '../utils/pageLayout';
 
 const HabitsPage = () => {
   const { user, refreshUser } = useAuth();
@@ -55,20 +57,155 @@ const HabitsPage = () => {
     }
   };
 
+  // Helper to get YYYY-MM-DD string from a date (consistent with HabitTrackingPage)
+  const getDateString = (date, useUTC = false) => {
+    if (useUTC) {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  };
+
+  // Get recent dates for tracking display (last 7 days)
+  const getRecentDates = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  // Check if habit is completed for a specific date (consistent with HabitTrackingPage)
+  const isCompletedForDate = (habit, date) => {
+    const targetDateString = getDateString(date);
+
+    // Check if habit was created after this date
+    const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
+    if (habitCreatedDate > date) {
+      return null; // Not applicable
+    }
+
+    if (!habit.completions || habit.completions.length === 0) {
+      return false;
+    }
+
+    // Compare dates by their YYYY-MM-DD string representation
+    const completion = habit.completions.find(c => {
+      const completionDate = new Date(c.date);
+      const completionDateString = getDateString(completionDate, true);
+      return completionDateString === targetDateString;
+    });
+
+    return completion ? true : false;
+  };
+
   // Check if habit is completed today
   const isCompletedToday = (habit) => {
-    if (!habit || !habit.completions || habit.completions.length === 0) return false;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    return isCompletedForDate(habit, today) === true;
+  };
 
-    const lastCompletionData = habit.completions[habit.completions.length - 1];
-    if (!lastCompletionData || !lastCompletionData.date) return false;
+  // Toggle habit for a specific date (consistent with HabitTrackingPage)
+  const toggleHabitForDate = async (habit, date) => {
+    date.setHours(0, 0, 0, 0);
 
-    const lastCompletion = new Date(lastCompletionData.date);
-    lastCompletion.setHours(0, 0, 0, 0);
+    // Check if habit was created after this date
+    const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
+    if (habitCreatedDate > date) {
+      toast.error('Habit did not exist on this date');
+      return;
+    }
 
-    return lastCompletion.getTime() === today.getTime();
+    const isCompleted = isCompletedForDate(habit, date);
+    const dateString = getDateString(date);
+
+    try {
+      if (isCompleted) {
+        await habitService.uncompleteForDate(habit._id, dateString);
+        toast.success(`${habit.title || habit.name} marked as incomplete`);
+      } else {
+        await habitService.completeForDate(habit._id, dateString);
+        toast.success(`${habit.title || habit.name} marked as complete`);
+      }
+      
+      await Promise.all([
+        fetchData(),
+        refreshUser()
+      ]);
+    } catch (err) {
+      console.error('Failed to toggle habit:', err);
+      toast.error('Failed to update habit. Please try again.');
+    }
+  };
+
+  // Get status and styling for a date cell (consistent with HabitTrackingPage)
+  const getDateCellStatus = (habit, date) => {
+    const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    if (habitCreatedDate > date) {
+      return {
+        type: 'not-created',
+        isCompleted: false,
+        isClickable: false,
+        className: 'bg-blue-500/20 cursor-not-allowed opacity-50'
+      };
+    }
+
+    const isCompleted = isCompletedForDate(habit, date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isToday = date.getTime() === today.getTime();
+    const isFuture = date > today;
+
+    if (isToday) {
+      return {
+        type: 'today',
+        isCompleted: isCompleted === true,
+        isClickable: true,
+        className: isCompleted
+          ? 'bg-emerald-500 shadow-lg shadow-emerald-500/60 ring-2 ring-emerald-300 ring-offset-2 ring-offset-dark-800'
+          : 'bg-amber-500 shadow-md shadow-amber-500/40 ring-2 ring-amber-400 ring-offset-2 ring-offset-dark-800'
+      };
+    }
+
+    if (isFuture) {
+      return {
+        type: 'future',
+        isCompleted: false,
+        isClickable: false,
+        className: 'bg-dark-700/50 cursor-not-allowed opacity-60'
+      };
+    }
+
+    if (isCompleted) {
+      return {
+        type: 'completed',
+        isCompleted: true,
+        isClickable: true,
+        className: 'bg-emerald-500 shadow-sm shadow-emerald-500/50'
+      };
+    }
+
+    return {
+      type: 'missed',
+      isCompleted: false,
+      isClickable: true,
+      className: 'bg-rose-500/70'
+    };
   };
 
   const toggleHabit = async (id, completed) => {
@@ -189,36 +326,40 @@ const HabitsPage = () => {
   }, {});
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <PageContainer>
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content */}
-      <main className="pt-40 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            All Habits 📚
-          </h1>
-          <p className="text-gray-400">
-            Manage and track all your habits in one place
-          </p>
-        </div>
+      <MainContent>
+        <PageHeader
+          title="All Habits 📚"
+          description="Manage and track all your habits in one place"
+          actionLabel="Add Habit"
+          actionOnClick={handleCreateHabit}
+        />
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
-            {error}
+        <ErrorMessage message={error} />
+
+        {/* Habit Dashboard Section - Same as Dashboard Page */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-white">Habit Tracking</h2>
+            <Link
+              to="/habit-tracking"
+              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
+            >
+              <span>View Full Dashboard</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
-        )}
+          <MonthlyHabitTracker habits={habits} />
+        </div>
 
         {/* Statistics Cards */}
         {stats && (
@@ -341,21 +482,13 @@ const HabitsPage = () => {
             </button>
           </div>
         ) : sortedHabits.length === 0 ? (
-          <div className="glass rounded-xl p-8 text-center">
-            <div className="text-4xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-white mb-2">No habits found</h3>
-            <p className="text-gray-400 mb-4">
-              {searchQuery ? 'Try a different search term' : 'Try selecting a different category'}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
-              >
-                Clear Search
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon="🔍"
+            title="No habits found"
+            description={searchQuery ? 'Try a different search term' : 'Try selecting a different category'}
+            actionLabel={searchQuery ? 'Clear Search' : undefined}
+            actionOnClick={searchQuery ? () => setSearchQuery('') : undefined}
+          />
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedHabits).map(([category, categoryHabits]) => (
@@ -451,6 +584,99 @@ const HabitsPage = () => {
                           <span className="capitalize">{habit.frequency || 'daily'}</span>
                           <span>{habit.stats?.totalCompletions || 0} total completions</span>
                         </div>
+
+                        {/* Date Tracking Strip - Last 7 Days */}
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs text-gray-400 font-medium">Recent Activity</span>
+                            <Link
+                              to="/habit-tracking"
+                              className="text-xs text-primary-400 hover:text-primary-300 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View All →
+                            </Link>
+                          </div>
+                          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                            {getRecentDates().map((date) => {
+                              const cellStatus = getDateCellStatus(habit, date);
+                              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                              const dayName = dayNames[date.getDay()];
+                              const day = date.getDate();
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const isToday = date.getTime() === today.getTime();
+
+                              return (
+                                <div
+                                  key={date.getTime()}
+                                  className="flex flex-col items-center gap-1 flex-shrink-0"
+                                  style={{ minWidth: '44px' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (cellStatus.isClickable) {
+                                      toggleHabitForDate(habit, date);
+                                    }
+                                  }}
+                                >
+                                  {/* Date Label */}
+                                  <div className={`text-center w-full text-xs ${
+                                    isToday 
+                                      ? 'text-primary-400 font-bold' 
+                                      : 'text-gray-500'
+                                  }`}>
+                                    <div className="font-medium">{dayName}</div>
+                                    <div className={`font-bold ${isToday ? 'text-primary-400' : ''}`}>
+                                      {day}
+                                    </div>
+                                  </div>
+
+                                  {/* Date Cell */}
+                                  <button
+                                    disabled={!cellStatus.isClickable}
+                                    className={`
+                                      w-8 h-8 sm:w-9 sm:h-9 rounded-lg
+                                      flex items-center justify-center
+                                      transition-all duration-200
+                                      ${cellStatus.className}
+                                      ${cellStatus.isClickable 
+                                        ? 'active:scale-95 cursor-pointer' 
+                                        : 'cursor-not-allowed'
+                                      }
+                                    `}
+                                    style={{
+                                      minWidth: '32px',
+                                      minHeight: '32px'
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (cellStatus.isClickable) {
+                                        toggleHabitForDate(habit, date);
+                                      }
+                                    }}
+                                    aria-label={`${habit.title || habit.name} - ${dayName} ${day}`}
+                                  >
+                                    {cellStatus.isCompleted && (
+                                      <svg
+                                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={3}
+                                          d="M5 13l4 4L19 7"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -459,7 +685,7 @@ const HabitsPage = () => {
             ))}
           </div>
         )}
-      </main>
+      </MainContent>
 
       {/* Modals */}
       <HabitModal
@@ -485,7 +711,7 @@ const HabitsPage = () => {
         cancelText="Cancel"
         isDestructive={true}
       />
-    </div>
+    </PageContainer>
   );
 };
 

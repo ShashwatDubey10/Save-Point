@@ -1,5 +1,24 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 
+// Helper to get YYYY-MM-DD string from a date
+// Uses UTC methods for dates from backend (stored as UTC) to ensure correct calendar date
+// Uses local methods for dates created locally (for display/UI)
+const getDateString = (date, useUTC = false) => {
+  if (useUTC) {
+    // For dates from backend (stored as UTC), extract UTC components
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } else {
+    // For local dates (created in UI), use local components
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+};
+
 const MonthlyHabitTracker = memo(({ habits = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState({
@@ -46,6 +65,7 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
       day
     );
     targetDate.setHours(0, 0, 0, 0);
+    const targetDateString = getDateString(targetDate);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -58,10 +78,13 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
     if (!habit.completions || habit.completions.length === 0) return 0;
 
     // Find if there's a completion for this date
+    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
+    // Use UTC for backend dates, local for UI dates
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      completionDate.setHours(0, 0, 0, 0);
-      return completionDate.getTime() === targetDate.getTime();
+      // Backend dates are stored as UTC, so extract UTC components
+      const completionDateString = getDateString(completionDate, true);
+      return completionDateString === targetDateString;
     });
 
     return completion ? 1 : 0;

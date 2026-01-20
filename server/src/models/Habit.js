@@ -183,6 +183,138 @@ habitSchema.methods.uncomplete = function() {
   return true;
 };
 
+// Helper to get YYYY-MM-DD string from a date
+// Uses UTC methods to ensure consistent date extraction regardless of server timezone
+function getDateString(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  // Use UTC methods to extract the calendar date that was stored
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Method to normalise a date input (string or Date) to a Date that preserves calendar date when stored as UTC
+// Uses UTC noon to prevent date shifts when stored in MongoDB (which stores as UTC)
+function normaliseToLocalDate(targetDate) {
+  if (!targetDate) return null;
+
+  let year, month, day;
+
+  // If it's a string in YYYY-MM-DD format, parse directly
+  if (typeof targetDate === 'string') {
+    const parts = targetDate.split('-');
+    if (parts.length === 3) {
+      year = Number(parts[0]);
+      month = Number(parts[1]) - 1; // 0-based
+      day = Number(parts[2]);
+    } else {
+      // Fallback for other string formats
+      const d = new Date(targetDate);
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+    }
+  } else if (targetDate instanceof Date) {
+    // Extract local date components
+    year = targetDate.getFullYear();
+    month = targetDate.getMonth();
+    day = targetDate.getDate();
+  } else {
+    // Fallback
+    const d = new Date(targetDate);
+    year = d.getFullYear();
+    month = d.getMonth();
+    day = d.getDate();
+  }
+
+  // Create date at UTC midnight for the target calendar date
+  // This ensures the calendar date is preserved when stored in MongoDB
+  // When read back, we'll use UTC methods to extract the date components
+  const normalized = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  return normalized;
+}
+
+// Method to complete habit for a specific date
+habitSchema.methods.completeForDate = function(targetDate, note = '', mood = null) {
+  const date = normaliseToLocalDate(targetDate);
+  if (!date || isNaN(date.getTime())) {
+    return false;
+  }
+
+  // Check if habit was created after this date
+  const habitCreatedDate = new Date(this.createdAt);
+  habitCreatedDate.setHours(0, 0, 0, 0);
+  if (habitCreatedDate > date) {
+    return false; // Habit didn't exist on this date
+  }
+
+  // Check if already completed for this date
+  // Compare by date string to avoid timezone issues
+  const targetDateString = getDateString(date);
+  const existingCompletion = this.completions.find(c => {
+    const completionDateString = getDateString(c.date);
+    return completionDateString === targetDateString;
+  });
+
+  if (existingCompletion) {
+    return false; // Already completed for this date
+  }
+
+  // Add completion
+  this.completions.push({
+    date: date,
+    note,
+    mood
+  });
+
+  // Sort completions by date
+  this.completions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Update stats
+  this.stats.totalCompletions += 1;
+  if (!this.stats.lastCompletedDate || date > this.stats.lastCompletedDate) {
+    this.stats.lastCompletedDate = date;
+  }
+
+  // Recalculate streak
+  this.recalculateStreak();
+
+  return true;
+};
+
+// Method to uncomplete habit for a specific date
+habitSchema.methods.uncompleteForDate = function(targetDate) {
+  const date = normaliseToLocalDate(targetDate);
+  if (!date || isNaN(date.getTime())) {
+    return false;
+  }
+
+  // Find and remove completion for this date
+  // Compare by date string to avoid timezone issues
+  const targetDateString = getDateString(date);
+  const completionIndex = this.completions.findIndex(c => {
+    const completionDateString = getDateString(c.date);
+    return completionDateString === targetDateString;
+  });
+
+  if (completionIndex === -1) {
+    return false; // Not completed for this date
+  }
+
+  // Remove completion
+  this.completions.splice(completionIndex, 1);
+
+  // Update stats
+  this.stats.totalCompletions = Math.max(0, this.stats.totalCompletions - 1);
+
+  // Recalculate streak
+  this.recalculateStreak();
+
+  return true;
+};
+
 // Method to update streak
 habitSchema.methods.updateStreak = function() {
   if (this.completions.length === 0) {

@@ -17,6 +17,7 @@ const TasksPage = lazy(() => import('./pages/TasksPage'));
 const NotesPage = lazy(() => import('./pages/NotesPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const HabitTrackingPage = lazy(() => import('./pages/HabitTrackingPage'));
 
 // Enhanced loading fallback component with backend status
 const LoadingFallback = () => {
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/habit-tracking" element={<ProtectedRoute><HabitTrackingPage /></ProtectedRoute>} />
       </Routes>
     </Suspense>
   );
