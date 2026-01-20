@@ -9,6 +9,7 @@ import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 import LevelUpModal from '../components/LevelUpModal';
 import { KanbanBoard } from '../components/KanbanBoard';
+import { PageContainer, MainContent, PageHeader, ErrorMessage, LoadingSpinner, EmptyState, ControlBar } from '../utils/pageLayout';
 
 const TasksPage = () => {
   const { user, refreshUser } = useAuth();
@@ -294,11 +295,7 @@ const TasksPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const TaskCard = ({ task }) => {
@@ -416,28 +413,19 @@ const TasksPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <PageContainer>
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content - Mobile-first padding */}
-      <main className="pt-16 sm:pt-20 lg:pt-32 pb-20 lg:pb-12 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
-        {/* Header - Responsive text */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-            Tasks & Deadlines 📋
-          </h1>
-          <p className="text-sm sm:text-base text-gray-400">
-            {view === 'board' ? 'Drag tasks between columns to change their status' : 'Click status icon to cycle: To Do → In Progress → Completed'}
-          </p>
-        </div>
+      <MainContent>
+        <PageHeader
+          title="Tasks & Deadlines 📋"
+          description={view === 'board' ? 'Drag tasks between columns to change their status' : 'Click status icon to cycle: To Do → In Progress → Completed'}
+          actionLabel="Add Task"
+          actionOnClick={handleCreateTask}
+        />
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-            {error}
-          </div>
-        )}
+        <ErrorMessage message={error} />
 
         {/* Filters and Actions - Mobile-first */}
         <div className="mb-4 sm:mb-6 flex flex-col gap-3">
@@ -512,17 +500,13 @@ const TasksPage = () => {
 
         {/* Tasks View */}
         {tasks.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center">
-            <div className="text-4xl mb-4">📋</div>
-            <h3 className="text-xl font-bold text-white mb-2">No tasks yet</h3>
-            <p className="text-gray-400 mb-6">Create your first task to get started!</p>
-            <button
-              onClick={handleCreateTask}
-              className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
-            >
-              Create Your First Task
-            </button>
-          </div>
+          <EmptyState
+            icon="📋"
+            title="No tasks yet"
+            description="Create your first task to get started!"
+            actionLabel="Create Your First Task"
+            actionOnClick={handleCreateTask}
+          />
         ) : view === 'list' ? (
           /* List View */
           <div className="space-y-3">
@@ -545,7 +529,7 @@ const TasksPage = () => {
             }}
           />
         )}
-      </main>
+      </MainContent>
 
       {/* Modals */}
       <TaskModal
@@ -578,7 +562,7 @@ const TasksPage = () => {
         newLevel={levelUpData.newLevel}
         previousLevel={levelUpData.previousLevel}
       />
-    </div>
+    </PageContainer>
   );
 };
 

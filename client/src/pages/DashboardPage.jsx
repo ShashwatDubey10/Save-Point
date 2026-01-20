@@ -11,6 +11,7 @@ import HabitModal from '../components/HabitModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MonthlyHabitTracker from '../components/MonthlyHabitTracker';
 import DraggableHabitList from '../components/DraggableHabitList';
+import { PageContainer, MainContent, ErrorMessage, LoadingSpinner, EmptyState } from '../utils/pageLayout';
 
 const DashboardPage = () => {
   const { user, refreshUser } = useAuth();
@@ -235,23 +236,18 @@ const DashboardPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <PageContainer>
       <AppHeader />
       <AppNavigation />
 
-      {/* Main Content - Full width on mobile */}
-      <main className="pt-14 sm:pt-20 lg:pt-32 pb-16 lg:pb-12 px-2 sm:px-4 lg:px-6 w-full sm:max-w-7xl sm:mx-auto">
+      <MainContent>
         {/* Welcome Section */}
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-1">
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
             {getGreeting()}, <span className="gradient-text">{user?.username || 'User'}</span>! 👋
           </h1>
           <p className="text-sm sm:text-base text-gray-400">
@@ -261,12 +257,7 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
-            {error}
-          </div>
-        )}
+        <ErrorMessage message={error} />
 
         {/* Stats Grid - Compact on mobile */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
@@ -372,17 +363,13 @@ const DashboardPage = () => {
             </div>
 
             {habits.length === 0 ? (
-              <div className="glass rounded-xl p-8 text-center">
-                <div className="text-4xl mb-4">🎯</div>
-                <h3 className="text-xl font-bold text-white mb-2">No habits yet</h3>
-                <p className="text-gray-400 mb-4">Start building your routine by adding your first habit!</p>
-                <button
-                  onClick={handleCreateHabit}
-                  className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
-                >
-                  Create Your First Habit
-                </button>
-              </div>
+              <EmptyState
+                icon="🎯"
+                title="No habits yet"
+                description="Start building your routine by adding your first habit!"
+                actionLabel="Create Your First Habit"
+                actionOnClick={handleCreateHabit}
+              />
             ) : (
               <DraggableHabitList
                 habits={habits}
@@ -478,10 +465,12 @@ const DashboardPage = () => {
           </div>
 
           {tasks.length === 0 ? (
-            <div className="glass rounded-xl p-6 text-center">
-              <div className="text-3xl mb-2">📋</div>
-              <p className="text-gray-400">No active tasks</p>
-            </div>
+            <EmptyState
+              icon="📋"
+              title="No active tasks"
+              actionLabel="View All Tasks"
+              actionLink="/tasks"
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {tasks
@@ -545,7 +534,7 @@ const DashboardPage = () => {
             </div>
           )}
         </div>
-      </main>
+      </MainContent>
 
       {/* Modals */}
       <HabitModal
@@ -571,7 +560,7 @@ const DashboardPage = () => {
         cancelText="Cancel"
         isDestructive={true}
       />
-    </div>
+    </PageContainer>
   );
 };
 
