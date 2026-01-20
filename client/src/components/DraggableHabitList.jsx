@@ -18,6 +18,7 @@ const DraggableHabitCard = ({
   const touchStartPosRef = useRef(null);
   const hasMovedRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const isPressedRef = useRef(false);
 
   // Handle press start (both mouse and touch)
   const handlePressStart = (e, isTouchEvent) => {
@@ -27,6 +28,7 @@ const DraggableHabitCard = ({
     }
 
     setIsPressed(true);
+    isPressedRef.current = true;
     dragStartTimeRef.current = Date.now();
     hasMovedRef.current = false;
 
@@ -45,14 +47,33 @@ const DraggableHabitCard = ({
 
     // For touch: wait 1 second before allowing drag
     if (isTouchEvent) {
+      // Store the event data for use in the timeout
+      const startEvent = {
+        type: e.type || 'touchstart',
+        touches: e.touches ? [{ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }] : null,
+        clientX: e.clientX,
+        clientY: e.clientY,
+      };
+      
       longPressTimerRef.current = setTimeout(() => {
-        // Vibrate to indicate drag mode activated
-        if (navigator.vibrate) {
-          navigator.vibrate(50);
+        // Only start drag if timer wasn't cancelled and we're still pressed
+        if (isPressedRef.current && touchStartPosRef.current) {
+          // Vibrate to indicate drag mode activated
+          if (navigator.vibrate) {
+            navigator.vibrate(50);
+          }
+          isDraggingRef.current = true;
+          setIsLocalDragging(true);
+          // Create a synthetic event-like object for onDragStart
+          // Use stored touch position
+          const syntheticEvent = {
+            type: 'touchstart',
+            touches: startEvent.touches ? [{ clientX: startEvent.touches[0].clientX, clientY: startEvent.touches[0].clientY }] : null,
+            clientX: startEvent.clientX || touchStartPosRef.current.x,
+            clientY: startEvent.clientY || touchStartPosRef.current.y,
+          };
+          onDragStart(habit, index, syntheticEvent);
         }
-        isDraggingRef.current = true;
-        setIsLocalDragging(true);
-        onDragStart(habit, index, e);
       }, 1000);
     } else {
       // For mouse: activate immediately
@@ -89,12 +110,15 @@ const DraggableHabitCard = ({
       if (isTouchEvent && isDraggingRef.current) {
         e.preventDefault();
       } else if (isTouchEvent && !isDraggingRef.current) {
-        // If user moves significantly, cancel long-press timer to allow scrolling
-        // This prevents accidental drag activation during scrolling
-        if (distance > 10 && longPressTimerRef.current) {
+        // Only cancel long-press if movement is primarily vertical (scrolling intent)
+        // Allow small movements or horizontal movements (drag intent)
+        // This allows users to hold still or move slightly while waiting for drag to activate
+        if (distance > 30 && deltaY > deltaX * 1.5 && longPressTimerRef.current) {
+          // Primarily vertical movement suggests scrolling - cancel drag
           clearTimeout(longPressTimerRef.current);
           longPressTimerRef.current = null;
         }
+        // Small movements or horizontal movements don't cancel - allows drag to activate
       }
     }
   };
@@ -102,6 +126,7 @@ const DraggableHabitCard = ({
   // Handle press end
   const handlePressEnd = (e) => {
     setIsPressed(false);
+    isPressedRef.current = false;
     isDraggingRef.current = false;
     setIsLocalDragging(false);
 
@@ -170,6 +195,7 @@ const DraggableHabitCard = ({
   // Cancel drag on scroll or movement
   const handlePressCancel = () => {
     setIsPressed(false);
+    isPressedRef.current = false;
     isDraggingRef.current = false;
     setIsLocalDragging(false);
     hasMovedRef.current = false;
