@@ -292,21 +292,22 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
         </div>
 
         {/* Habit Grid */}
-        <div className="overflow-x-auto -mx-2 px-2">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-2 sm:-mx-2 px-2 sm:px-2">
+          <table className="w-full border-separate" style={{ borderSpacing: '0 8px' }}>
             <thead>
               <tr>
-                <th className="text-left text-sm font-semibold text-gray-300 pb-4 pr-4 min-w-[160px]">
+                <th className="text-left text-sm font-semibold text-gray-300 pb-3 sm:pb-4 pr-3 sm:pr-4 min-w-[140px] sm:min-w-[160px]">
                   Habit
                 </th>
                 {days.map((day) => (
                   <th
                     key={day}
-                    className={`text-center text-xs font-medium pb-4 w-7 ${
+                    className={`text-center text-xs sm:text-xs font-medium pb-3 sm:pb-4 px-1.5 sm:px-1 ${
                       isCurrentMonth && day === currentDay
-                        ? 'text-primary-400'
+                        ? 'text-primary-400 font-bold'
                         : 'text-gray-500'
                     }`}
+                    style={{ minWidth: '36px' }}
                   >
                     {day}
                   </th>
@@ -316,10 +317,10 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
             <tbody>
               {habits.map((habit, habitIndex) => (
                 <tr key={habit._id || habitIndex} className="group">
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{habit.icon || '📌'}</span>
-                      <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors truncate max-w-[120px]">
+                  <td className="py-3 sm:py-2 pr-3 sm:pr-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-lg sm:text-xl">{habit.icon || '📌'}</span>
+                      <span className="text-sm text-white font-medium group-hover:text-primary-400 transition-colors truncate max-w-[100px] sm:max-w-[120px]">
                         {habit.title || habit.name}
                       </span>
                     </div>
@@ -327,11 +328,12 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
                   {days.map((day) => {
                     const status = getCompletionStatus(habit, day);
                     return (
-                      <td key={day} className="py-2">
+                      <td key={day} className="py-2.5 sm:py-3 px-1.5 sm:px-1">
                         <div
-                          className={`w-5 h-5 rounded-md mx-auto transition-all duration-200 ${getStatusColor(status, day, habit)}
-                            ${isCurrentMonth && day === currentDay ? 'ring-2 ring-primary-400 ring-offset-2 ring-offset-dark-800' : ''}`}
+                          className={`w-8 h-8 sm:w-5 sm:h-5 rounded-lg sm:rounded-md mx-auto transition-all duration-200 ${getStatusColor(status, day, habit)}
+                            ${isCurrentMonth && day === currentDay ? 'ring-2 sm:ring-2 ring-primary-400 ring-offset-1 sm:ring-offset-2 ring-offset-dark-800' : ''}`}
                           title={`${habit.title || habit.name} - Day ${day}`}
+                          style={{ minWidth: '32px', minHeight: '32px' }}
                         />
                       </td>
                     );
