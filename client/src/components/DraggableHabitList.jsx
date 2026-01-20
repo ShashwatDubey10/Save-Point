@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 // Individual Draggable Habit Card
 const DraggableHabitCard = ({
@@ -12,10 +12,12 @@ const DraggableHabitCard = ({
   isDragging,
 }) => {
   const [isPressed, setIsPressed] = useState(false);
+  const [isLocalDragging, setIsLocalDragging] = useState(false);
   const longPressTimerRef = useRef(null);
   const dragStartTimeRef = useRef(null);
   const touchStartPosRef = useRef(null);
   const hasMovedRef = useRef(false);
+  const isDraggingRef = useRef(false);
 
   // Handle press start (both mouse and touch)
   const handlePressStart = (e, isTouchEvent) => {
@@ -48,10 +50,14 @@ const DraggableHabitCard = ({
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
+        isDraggingRef.current = true;
+        setIsLocalDragging(true);
         onDragStart(habit, index, e);
       }, 1000);
     } else {
       // For mouse: activate immediately
+      isDraggingRef.current = true;
+      setIsLocalDragging(true);
       onDragStart(habit, index, e);
     }
   };
@@ -74,17 +80,21 @@ const DraggableHabitCard = ({
     const deltaY = Math.abs(currentPos.y - touchStartPosRef.current.y);
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // If movement exceeds 5px threshold, it's definitely a swipe
+    // If movement exceeds 5px threshold, mark as moved
     if (distance > 5) {
       hasMovedRef.current = true;
-      // Cancel long-press timer if user is swiping
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      // Prevent default to stop scrolling when swiping
-      if (isTouchEvent) {
+      
+      // Only prevent default if we're actually dragging (after long press)
+      // This allows normal scrolling when not dragging
+      if (isTouchEvent && isDraggingRef.current) {
         e.preventDefault();
+      } else if (isTouchEvent && !isDraggingRef.current) {
+        // If user moves significantly, cancel long-press timer to allow scrolling
+        // This prevents accidental drag activation during scrolling
+        if (distance > 10 && longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
       }
     }
   };
@@ -92,6 +102,8 @@ const DraggableHabitCard = ({
   // Handle press end
   const handlePressEnd = (e) => {
     setIsPressed(false);
+    isDraggingRef.current = false;
+    setIsLocalDragging(false);
 
     // Clear long-press timer
     if (longPressTimerRef.current) {
@@ -158,6 +170,8 @@ const DraggableHabitCard = ({
   // Cancel drag on scroll or movement
   const handlePressCancel = () => {
     setIsPressed(false);
+    isDraggingRef.current = false;
+    setIsLocalDragging(false);
     hasMovedRef.current = false;
     touchStartPosRef.current = null;
     if (longPressTimerRef.current) {
@@ -165,6 +179,14 @@ const DraggableHabitCard = ({
       longPressTimerRef.current = null;
     }
   };
+
+  // Sync local dragging state with parent's isDragging prop
+  useEffect(() => {
+    if (!isDragging) {
+      setIsLocalDragging(false);
+      isDraggingRef.current = false;
+    }
+  }, [isDragging]);
 
   const completed = isCompletedToday(habit);
 
@@ -177,7 +199,7 @@ const DraggableHabitCard = ({
       } ${!isDragging ? "hover:bg-white/10" : ""}`}
       style={{
         cursor: isDragging ? "grabbing" : "grab",
-        touchAction: "none",
+        touchAction: (isDragging || isLocalDragging) ? "none" : "pan-y",
       }}
       // Mouse events
       onMouseDown={(e) => handlePressStart(e, false)}
