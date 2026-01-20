@@ -222,11 +222,107 @@ const DashboardPage = () => {
   const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
   const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
 
-  // Get weekly progress from analytics data
+  // Helper to get YYYY-MM-DD string from a date (consistent with HabitTrackingPage)
+  const getDateString = (date, useUTC = false) => {
+    if (useUTC) {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  };
+
+  // Check if habit is completed for a specific date
+  const isCompletedForDate = (habit, date) => {
+    const targetDateString = getDateString(date);
+
+    // Check if habit was created after this date
+    const habitCreatedDate = new Date(habit.createdAt);
+    habitCreatedDate.setHours(0, 0, 0, 0);
+    if (habitCreatedDate > date) {
+      return false; // Not applicable
+    }
+
+    if (!habit.completions || habit.completions.length === 0) {
+      return false;
+    }
+
+    // Compare dates by their YYYY-MM-DD string representation
+    const completion = habit.completions.find(c => {
+      const completionDate = new Date(c.date);
+      const completionDateString = getDateString(completionDate, true);
+      return completionDateString === targetDateString;
+    });
+
+    return completion ? true : false;
+  };
+
+  // Week days labels (Monday to Sunday)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekProgress = weeklyData?.habits?.dailyBreakdown
-    ? weeklyData.habits.dailyBreakdown.map(day => day.completionRate)
-    : [0, 0, 0, 0, 0, 0, 0];
+
+  // Calculate weekly progress from habits (fallback if API data unavailable)
+  const calculateWeeklyProgress = () => {
+    if (habits.length === 0) {
+      return [0, 0, 0, 0, 0, 0, 0];
+    }
+
+    // Get current week (Monday to Sunday)
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to Monday-based (0-6)
+    
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - daysFromMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const weekProgress = [];
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      day.setHours(0, 0, 0, 0);
+
+      // Count completions for this day
+      let completedCount = 0;
+      habits.forEach(habit => {
+        if (isCompletedForDate(habit, day)) {
+          completedCount++;
+        }
+      });
+
+      // Calculate completion rate as percentage
+      const completionRate = habits.length > 0 
+        ? Math.round((completedCount / habits.length) * 100)
+        : 0;
+
+      weekProgress.push(completionRate);
+    }
+
+    return weekProgress;
+  };
+
+  // Get weekly progress from analytics data or calculate from habits
+  let weekProgress = [0, 0, 0, 0, 0, 0, 0];
+
+  if (weeklyData?.habits?.dailyBreakdown && weeklyData.habits.dailyBreakdown.length === 7) {
+    // Use API data if available and properly formatted
+    // Backend returns Sunday-Saturday, but we need Monday-Sunday
+    // So we need to reorder: take last day (Sun) and put it first, then Mon-Sat
+    const apiData = weeklyData.habits.dailyBreakdown;
+    const reorderedData = [
+      ...apiData.slice(1), // Mon-Sat
+      apiData[0]           // Sun (moved to end)
+    ];
+    weekProgress = reorderedData.map(day => day.completionRate || 0);
+  } else {
+    // Fallback: calculate from habits directly
+    weekProgress = calculateWeeklyProgress();
+  }
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -387,25 +483,71 @@ const DashboardPage = () => {
             {/* Weekly Progress */}
             <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
               <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Weekly Progress</h3>
-              <div className="flex items-end justify-between gap-2 h-32">
-                {weekDays.map((day, i) => (
-                  <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-white/10 rounded-full flex-1 relative overflow-hidden">
-                      <div
-                        className={`absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500 ${
-                          weekProgress[i] === 100
-                            ? 'bg-gradient-to-t from-green-500 to-emerald-400'
-                            : 'bg-gradient-to-t from-primary-600 to-primary-400'
-                        }`}
-                        style={{ height: `${weekProgress[i]}%` }}
-                      />
-                    </div>
-                    <span className={`text-xs ${i === 6 ? 'text-primary-400 font-medium' : 'text-gray-500'}`}>
-                      {day}
+              {habits.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">No habits to track</p>
+                  <p className="text-gray-600 text-xs mt-1">Add habits to see your weekly progress</p>
+                </div>
+              ) : (
+                <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-32 sm:h-36">
+                  {weekDays.map((day, i) => {
+                    const progress = weekProgress[i] || 0;
+                    const isToday = (() => {
+                      const today = new Date();
+                      const dayOfWeek = today.getDay();
+                      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      return i === daysFromMonday;
+                    })();
+                    
+                    return (
+                      <div key={day} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 min-w-0">
+                        <div className="w-full bg-white/10 rounded-full flex-1 relative overflow-hidden min-h-[60px]">
+                          <div
+                            className={`absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500 ${
+                              progress === 100
+                                ? 'bg-gradient-to-t from-green-500 to-emerald-400'
+                                : progress > 0
+                                ? 'bg-gradient-to-t from-primary-600 to-primary-400'
+                                : 'bg-white/5'
+                            }`}
+                            style={{ 
+                              height: `${Math.max(progress, 2)}%`, // Minimum 2% height for visibility
+                              minHeight: progress > 0 ? '4px' : '0px'
+                            }}
+                            title={`${day}: ${progress}%`}
+                          />
+                          {/* Progress percentage label on bar */}
+                          {progress > 0 && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-[8px] sm:text-[10px] font-bold text-white drop-shadow-sm">
+                                {progress}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`text-[10px] sm:text-xs font-medium ${
+                          isToday 
+                            ? 'text-primary-400 font-bold' 
+                            : 'text-gray-500'
+                        }`}>
+                          {day}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Weekly Summary */}
+              {habits.length > 0 && (
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="text-gray-400">Week Average</span>
+                    <span className="text-white font-semibold">
+                      {Math.round(weekProgress.reduce((sum, val) => sum + val, 0) / 7)}%
                     </span>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Achievements */}
