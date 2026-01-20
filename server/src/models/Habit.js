@@ -183,6 +183,79 @@ habitSchema.methods.uncomplete = function() {
   return true;
 };
 
+// Method to complete habit for a specific date
+habitSchema.methods.completeForDate = function(targetDate, note = '', mood = null) {
+  const date = new Date(targetDate);
+  date.setHours(0, 0, 0, 0);
+
+  // Check if habit was created after this date
+  const habitCreatedDate = new Date(this.createdAt);
+  habitCreatedDate.setHours(0, 0, 0, 0);
+  if (habitCreatedDate > date) {
+    return false; // Habit didn't exist on this date
+  }
+
+  // Check if already completed for this date
+  const existingCompletion = this.completions.find(c => {
+    const completionDate = new Date(c.date);
+    completionDate.setHours(0, 0, 0, 0);
+    return completionDate.getTime() === date.getTime();
+  });
+
+  if (existingCompletion) {
+    return false; // Already completed for this date
+  }
+
+  // Add completion
+  this.completions.push({
+    date: date,
+    note,
+    mood
+  });
+
+  // Sort completions by date
+  this.completions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Update stats
+  this.stats.totalCompletions += 1;
+  if (!this.stats.lastCompletedDate || date > this.stats.lastCompletedDate) {
+    this.stats.lastCompletedDate = date;
+  }
+
+  // Recalculate streak
+  this.recalculateStreak();
+
+  return true;
+};
+
+// Method to uncomplete habit for a specific date
+habitSchema.methods.uncompleteForDate = function(targetDate) {
+  const date = new Date(targetDate);
+  date.setHours(0, 0, 0, 0);
+
+  // Find and remove completion for this date
+  const completionIndex = this.completions.findIndex(c => {
+    const completionDate = new Date(c.date);
+    completionDate.setHours(0, 0, 0, 0);
+    return completionDate.getTime() === date.getTime();
+  });
+
+  if (completionIndex === -1) {
+    return false; // Not completed for this date
+  }
+
+  // Remove completion
+  this.completions.splice(completionIndex, 1);
+
+  // Update stats
+  this.stats.totalCompletions = Math.max(0, this.stats.totalCompletions - 1);
+
+  // Recalculate streak
+  this.recalculateStreak();
+
+  return true;
+};
+
 // Method to update streak
 habitSchema.methods.updateStreak = function() {
   if (this.completions.length === 0) {

@@ -258,6 +258,112 @@ export const uncompleteHabit = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Complete habit for a specific date
+// @route   POST /api/habits/:id/complete-date
+// @access  Private
+export const completeHabitForDate = asyncHandler(async (req, res) => {
+  const { date, note, mood } = req.body;
+
+  if (!date) {
+    return res.status(400).json({
+      success: false,
+      message: 'Date is required'
+    });
+  }
+
+  const habit = await Habit.findById(req.params.id);
+
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // Make sure user owns habit
+  if (habit.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to complete this habit'
+    });
+  }
+
+  // Complete habit for the specified date
+  const success = habit.completeForDate(date, note, mood);
+  
+  if (!success) {
+    return res.status(400).json({
+      success: false,
+      message: 'Habit already completed for this date or date is invalid'
+    });
+  }
+
+  await habit.save();
+
+  // Recalculate user stats
+  const user = await User.findById(req.user.id);
+  user.updateStreak();
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: habit
+  });
+});
+
+// @desc    Uncomplete habit for a specific date
+// @route   POST /api/habits/:id/uncomplete-date
+// @access  Private
+export const uncompleteHabitForDate = asyncHandler(async (req, res) => {
+  const { date } = req.body;
+
+  if (!date) {
+    return res.status(400).json({
+      success: false,
+      message: 'Date is required'
+    });
+  }
+
+  const habit = await Habit.findById(req.params.id);
+
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // Make sure user owns habit
+  if (habit.user.toString() !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to uncomplete this habit'
+    });
+  }
+
+  // Uncomplete habit for the specified date
+  const success = habit.uncompleteForDate(date);
+  
+  if (!success) {
+    return res.status(400).json({
+      success: false,
+      message: 'Habit not completed for this date'
+    });
+  }
+
+  await habit.save();
+
+  // Recalculate user stats
+  const user = await User.findById(req.user.id);
+  user.updateStreak();
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: habit
+  });
+});
+
 // @desc    Get habit statistics
 // @route   GET /api/habits/stats
 // @access  Private

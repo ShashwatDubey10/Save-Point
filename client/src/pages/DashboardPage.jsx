@@ -333,6 +333,18 @@ const DashboardPage = () => {
 
         {/* Monthly Habit Tracker */}
         <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-white">Habit Tracking</h2>
+            <Link
+              to="/habit-tracking"
+              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
+            >
+              <span>View Full Dashboard</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
           <MonthlyHabitTracker habits={habits} />
         </div>
 

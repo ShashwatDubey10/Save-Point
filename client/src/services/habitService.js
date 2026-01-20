@@ -45,4 +45,14 @@ export const habitService = {
     const response = await api.put('/habits/reorder', { habitIds });
     return response.data;
   },
+
+  async completeForDate(id, date, note = '', mood = null) {
+    const response = await api.post(`/habits/${id}/complete-date`, { date, note, mood });
+    return response.data;
+  },
+
+  async uncompleteForDate(id, date) {
+    const response = await api.post(`/habits/${id}/uncomplete-date`, { date });
+    return response.data;
+  },
 };
