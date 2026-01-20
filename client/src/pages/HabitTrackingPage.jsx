@@ -13,8 +13,6 @@ const HabitTrackingPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
-  const [viewMode, setViewMode] = useState('week'); // 'week' or 'month'
-  const [checkedCell, setCheckedCell] = useState(null); // For animation
   
   // Touch swipe handlers
   const swipeRefs = useRef({});
@@ -52,38 +50,25 @@ const HabitTrackingPage = () => {
     }
   };
 
-  // Get dates for current view (week or month)
-  const getDatesForView = () => {
-    const now = new Date();
-    const dates = [];
-    
-    if (viewMode === 'week') {
-      // Show 7 days: 3 days before today, today, 3 days after
-      const startDate = new Date(now);
-      startDate.setDate(now.getDate() - 3);
-      
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        dates.push(date);
-      }
-    } else {
-      // Show current month
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      
-      for (let i = 1; i <= daysInMonth; i++) {
-        dates.push(new Date(year, month, i));
-      }
-    }
-    
-    return dates;
+  // Helper to create a date for a specific day in the current month
+  const getDateForDay = (day) => {
+    return new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      day
+    );
   };
 
-  const dates = getDatesForView();
+  // Get days in current month
+  const daysInMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  ).getDate();
+
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   
-  // Get current date info
+  // Get current date info using the same logic
   const now = new Date();
   const currentDay = now.getDate();
   const currentMonth = now.getMonth();
@@ -102,13 +87,14 @@ const HabitTrackingPage = () => {
   const year = currentDate.getFullYear();
 
   // Check if habit is completed for a specific date
-  const isCompletedForDate = (habit, date) => {
-    const targetDateString = getDateString(date);
+  const isCompletedForDate = (habit, day) => {
+    const targetDate = getDateForDay(day);
+    const targetDateString = getDateString(targetDate);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
     habitCreatedDate.setHours(0, 0, 0, 0);
-    if (habitCreatedDate > date) {
+    if (habitCreatedDate > targetDate) {
       return null; // Not applicable
     }
 
@@ -116,8 +102,11 @@ const HabitTrackingPage = () => {
       return false;
     }
 
+    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
+    // Use UTC for backend dates, local for UI dates
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
+      // Backend dates are stored as UTC, so extract UTC components
       const completionDateString = getDateString(completionDate, true);
       return completionDateString === targetDateString;
     });
@@ -126,26 +115,23 @@ const HabitTrackingPage = () => {
   };
 
   // Toggle habit completion for a specific date
-  const toggleHabitForDate = async (habit, date) => {
-    date.setHours(0, 0, 0, 0);
+  const toggleHabitForDate = async (habit, day) => {
+    const targetDate = getDateForDay(day);
+    targetDate.setHours(0, 0, 0, 0);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
     habitCreatedDate.setHours(0, 0, 0, 0);
-    if (habitCreatedDate > date) {
+    if (habitCreatedDate > targetDate) {
       toast.error('Habit did not exist on this date');
       return;
     }
 
-    const isCompleted = isCompletedForDate(habit, date);
-    const dateString = getDateString(date);
+    const isCompleted = isCompletedForDate(habit, day);
+    // Use local date string, not UTC (toISOString gives UTC which can shift the date)
+    const dateString = getDateString(targetDate);
 
     try {
-      // Set checked cell for animation
-      const cellKey = `${habit._id}-${date.getTime()}`;
-      setCheckedCell(cellKey);
-      setTimeout(() => setCheckedCell(null), 300);
-
       if (isCompleted) {
         await habitService.uncompleteForDate(habit._id, dateString);
         toast.success(`${habit.title || habit.name} marked as incomplete`);
@@ -220,12 +206,14 @@ const HabitTrackingPage = () => {
   };
 
   // Get status and styling for a date cell
-  const getDateCellStatus = (habit, date) => {
+  const getDateCellStatus = (habit, day) => {
+    const targetDate = getDateForDay(day);
     const habitCreatedDate = new Date(habit.createdAt);
     habitCreatedDate.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
 
-    if (habitCreatedDate > date) {
+    // Check if habit was created after this date
+    if (habitCreatedDate > targetDate) {
       return {
         type: 'not-created',
         isCompleted: false,
@@ -234,12 +222,10 @@ const HabitTrackingPage = () => {
       };
     }
 
-    const isCompleted = isCompletedForDate(habit, date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isToday = date.getTime() === today.getTime();
-    const isFuture = date > today;
-    const isSelected = selectedDay && date.getTime() === selectedDay.getTime();
+    const isCompleted = isCompletedForDate(habit, day);
+    const isToday = isCurrentMonth && day === currentDay;
+    const isFuture = isCurrentMonth && day > currentDay;
+    const isSelected = selectedDay === day;
 
     if (isToday) {
       return {
@@ -290,14 +276,11 @@ const HabitTrackingPage = () => {
   };
 
   // Format date for display
-  const formatDateLabel = (date) => {
-    const day = date.getDate();
+  const formatDateLabel = (day) => {
+    const date = getDateForDay(day);
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = dayNames[date.getDay()];
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isToday = date.getTime() === today.getTime();
+    const isToday = isCurrentMonth && day === currentDay;
     
     return { day, dayName, isToday };
   };
@@ -318,44 +301,44 @@ const HabitTrackingPage = () => {
       {/* Main Content */}
       <main className="pt-14 sm:pt-20 lg:pt-32 pb-16 lg:pb-12 px-3 sm:px-4 lg:px-6 w-full sm:max-w-7xl sm:mx-auto">
         {/* Header */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1 sm:mb-2">
-                Habit Dashboard 📊
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+                Habit Tracking Dashboard 📊
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400">
-                Track your habits day by day
+              <p className="text-sm sm:text-base text-gray-400">
+                Track and manage your habits across dates
               </p>
             </div>
             <Link
               to="/habits"
-              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg sm:rounded-xl transition-colors text-xs sm:text-sm"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors text-sm sm:text-base"
             >
-              Manage →
+              Manage Habits →
             </Link>
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-lg sm:rounded-xl text-red-400 text-sm">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
             {error}
           </div>
         )}
 
-        {/* Calendar Controls - Mobile Optimized */}
-        <div className="glass rounded-xl p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div className="flex items-center justify-between sm:justify-start gap-3">
+        {/* Calendar Controls */}
+        <div className="glass rounded-xl p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
               <div>
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
-                  {viewMode === 'week' ? 'This Week' : `${monthName} ${year}`}
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  {monthName} {year}
                 </h2>
-                {!isCurrentMonth && viewMode === 'month' && (
+                {!isCurrentMonth && (
                   <button
                     onClick={goToCurrentMonth}
-                    className="mt-1.5 sm:mt-2 px-2.5 py-1 text-xs bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
+                    className="mt-2 px-3 py-1 text-xs bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
                   >
                     Go to Today
                   </button>
@@ -363,86 +346,66 @@ const HabitTrackingPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('week')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    viewMode === 'week'
-                      ? 'bg-primary-600 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Week
-                </button>
-                <button
-                  onClick={() => setViewMode('month')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    viewMode === 'month'
-                      ? 'bg-primary-600 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Month
-                </button>
-              </div>
-
-              {viewMode === 'month' && (
-                <>
-                  <button
-                    onClick={goToPreviousMonth}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                    title="Previous month"
-                  >
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={goToNextMonth}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                    title="Next month"
-                  >
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </>
-              )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={goToPreviousMonth}
+                className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                title="Previous month"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={goToNextMonth}
+                className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                title="Next month"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          {/* Legend - Mobile Optimized */}
-          <div className="flex items-center gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 flex-wrap text-xs sm:text-sm">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500" />
-              <span className="text-gray-400">Done</span>
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-6 pt-6 border-t border-white/10 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+              <span className="text-sm text-gray-400">Completed</span>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-500/70" />
-              <span className="text-gray-400">Missed</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-rose-500/70" />
+              <span className="text-sm text-gray-400">Missed</span>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-500 ring-2 ring-amber-400" />
-              <span className="text-gray-400">Today</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-400" />
+              <span className="text-sm text-gray-400">Today (Pending)</span>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-dark-700/50" />
-              <span className="text-gray-400">Future</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-dark-700/50" />
+              <span className="text-sm text-gray-400">Future</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500/20" />
+              <span className="text-sm text-gray-400">Not Created</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary-400 ring-2 ring-primary-400" />
+              <span className="text-sm text-gray-400">Selected</span>
             </div>
           </div>
         </div>
 
         {/* Habit List - Mobile Optimized */}
         {habits.length === 0 ? (
-          <div className="glass rounded-xl p-6 sm:p-8 text-center">
-            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">📅</div>
-            <h3 className="text-lg sm:text-xl font-bold text-white mb-2">No habits to track</h3>
-            <p className="text-gray-400 mb-4 text-sm sm:text-base">Add some habits to start tracking!</p>
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="text-4xl mb-4">📅</div>
+            <h3 className="text-xl font-bold text-white mb-2">No habits to track</h3>
+            <p className="text-gray-400 mb-4">Add some habits to start tracking!</p>
             <Link
               to="/habits"
-              className="inline-block px-5 py-2.5 sm:px-6 sm:py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors text-sm sm:text-base"
+              className="inline-block px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-colors"
             >
               Add Habits
             </Link>
@@ -476,20 +439,20 @@ const HabitTrackingPage = () => {
                   {/* Swipeable Date Strip */}
                   <div
                     ref={(el) => (swipeRefs.current[habitId] = el)}
-                    className="swipeable-container overflow-x-auto overflow-y-hidden"
+                    className="hide-scrollbar overflow-x-auto overflow-y-hidden"
                     onTouchStart={(e) => handleTouchStart(habitId, e)}
                     onTouchMove={(e) => handleTouchMove(habitId, e)}
                     onTouchEnd={(e) => handleTouchEnd(habitId, e)}
                   >
                     <div className="flex gap-2 sm:gap-3 px-4 py-3 sm:px-5 sm:py-4 min-w-max">
-                      {dates.map((date, dateIndex) => {
-                        const { day, dayName, isToday } = formatDateLabel(date);
-                        const cellStatus = getDateCellStatus(habit, date);
-                        const isSelected = selectedDay && date.getTime() === selectedDay.getTime();
+                      {days.map((day) => {
+                        const { dayName, isToday } = formatDateLabel(day);
+                        const cellStatus = getDateCellStatus(habit, day);
+                        const isSelected = selectedDay === day;
 
                         return (
                           <div
-                            key={`${habitId}-${date.getTime()}`}
+                            key={`${habitId}-${day}`}
                             className="flex flex-col items-center gap-1.5 sm:gap-2 flex-shrink-0"
                             style={{ minWidth: '64px' }}
                           >
@@ -511,8 +474,8 @@ const HabitTrackingPage = () => {
                             <button
                               onClick={() => {
                                 if (cellStatus.isClickable) {
-                                  setSelectedDay(date);
-                                  toggleHabitForDate(habit, date);
+                                  setSelectedDay(day);
+                                  toggleHabitForDate(habit, day);
                                 }
                               }}
                               disabled={!cellStatus.isClickable}
@@ -520,14 +483,12 @@ const HabitTrackingPage = () => {
                                 w-12 h-12 sm:w-14 sm:h-14 rounded-xl
                                 flex items-center justify-center
                                 transition-all duration-200
-                                touch-manipulation
                                 ${cellStatus.className}
                                 ${cellStatus.isClickable 
                                   ? 'active:scale-95 cursor-pointer' 
                                   : 'cursor-not-allowed'
                                 }
                                 ${isSelected ? 'ring-2 ring-primary-400 ring-offset-2 ring-offset-dark-800' : ''}
-                                ${checkedCell === `${habitId}-${date.getTime()}` ? 'habit-cell-checked' : ''}
                               `}
                               style={{
                                 minWidth: '48px',
