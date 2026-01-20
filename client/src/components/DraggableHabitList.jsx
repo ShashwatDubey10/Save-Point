@@ -13,27 +13,19 @@ const DraggableHabitCard = ({
 }) => {
   const [isPressed, setIsPressed] = useState(false);
   const [isLocalDragging, setIsLocalDragging] = useState(false);
-  const longPressTimerRef = useRef(null);
-  const dragStartTimeRef = useRef(null);
   const touchStartPosRef = useRef(null);
-  const hasMovedRef = useRef(false);
   const isDraggingRef = useRef(false);
   const isPressedRef = useRef(false);
   const cardElementRef = useRef(null);
 
-  // Handle press start (both mouse and touch)
-  const handlePressStart = (e, isTouchEvent) => {
-    // Don't start drag if clicking buttons or checkbox
-    if (e.target.closest("button") || e.target.closest(".checkbox")) {
-      return;
-    }
-
+  // Handle drag handle press start (both mouse and touch)
+  const handleDragHandleStart = (e, isTouchEvent) => {
+    e.stopPropagation(); // Prevent card click handlers
+    
     setIsPressed(true);
     isPressedRef.current = true;
-    dragStartTimeRef.current = Date.now();
-    hasMovedRef.current = false;
 
-    // Track initial touch position for swipe detection
+    // Track initial touch position
     if (isTouchEvent && e.touches && e.touches.length > 0) {
       touchStartPosRef.current = {
         x: e.touches[0].clientX,
@@ -46,9 +38,9 @@ const DraggableHabitCard = ({
       };
     }
 
-    // For touch: wait 1 second before allowing drag
+    // For touch: activate drag immediately (no long press needed for handle)
     if (isTouchEvent) {
-      // Store the event data for use in the timeout
+      // Store the event data
       const startEvent = {
         type: e.type || 'touchstart',
         touches: e.touches ? [{ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }] : null,
@@ -56,32 +48,22 @@ const DraggableHabitCard = ({
         clientY: e.clientY,
       };
       
-      longPressTimerRef.current = setTimeout(() => {
-        // Only start drag if timer wasn't cancelled and we're still pressed
-        if (isPressedRef.current && touchStartPosRef.current) {
-          // Vibrate to indicate drag mode activated
-          if (navigator.vibrate) {
-            navigator.vibrate(50);
-          }
-          isDraggingRef.current = true;
-          setIsLocalDragging(true);
-          // Create a synthetic event-like object for onDragStart
-          // Use stored touch position - the parent will use current position from touchmove events
-          const syntheticEvent = {
-            type: 'touchstart',
-            touches: startEvent.touches ? [{ 
-              clientX: startEvent.touches[0].clientX, 
-              clientY: startEvent.touches[0].clientY 
-            }] : [{ 
-              clientX: touchStartPosRef.current.x, 
-              clientY: touchStartPosRef.current.y 
-            }],
-            clientX: startEvent.touches ? startEvent.touches[0].clientX : (startEvent.clientX || touchStartPosRef.current.x),
-            clientY: startEvent.touches ? startEvent.touches[0].clientY : (startEvent.clientY || touchStartPosRef.current.y),
-          };
-          onDragStart(habit, index, syntheticEvent);
-        }
-      }, 1000);
+      // Start drag immediately for handle
+      isDraggingRef.current = true;
+      setIsLocalDragging(true);
+      const syntheticEvent = {
+        type: 'touchstart',
+        touches: startEvent.touches ? [{ 
+          clientX: startEvent.touches[0].clientX, 
+          clientY: startEvent.touches[0].clientY 
+        }] : [{ 
+          clientX: touchStartPosRef.current.x, 
+          clientY: touchStartPosRef.current.y 
+        }],
+        clientX: startEvent.touches ? startEvent.touches[0].clientX : (startEvent.clientX || touchStartPosRef.current.x),
+        clientY: startEvent.touches ? startEvent.touches[0].clientY : (startEvent.clientY || touchStartPosRef.current.y),
+      };
+      onDragStart(habit, index, syntheticEvent);
     } else {
       // For mouse: activate immediately
       isDraggingRef.current = true;
@@ -90,136 +72,31 @@ const DraggableHabitCard = ({
     }
   };
 
-  // Handle touch/mouse move to detect swipes
-  const handlePressMove = (e) => {
-    // If dragging is active, let document-level handlers take over completely
-    // Don't process anything here to avoid interference
+  // Handle drag handle move - only called when dragging from handle
+  const handleDragHandleMove = (e) => {
+    // If dragging is active, let document-level handlers take over
     if (isDraggingRef.current || isDragging) {
-      // Only prevent default when actually dragging - document handler will handle it
       return;
     }
-
-    if (!touchStartPosRef.current) return;
-
-    // Determine if it's a touch event
-    const isTouchEvent =
-      (e.type && (e.type === "touchmove" || e.type.includes("touch"))) ||
-      (e.touches && e.touches.length > 0);
-
-    const currentPos =
-      isTouchEvent && e.touches && e.touches.length > 0
-        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-        : { x: e.clientX, y: e.clientY };
-
-    const deltaX = Math.abs(currentPos.x - touchStartPosRef.current.x);
-    const deltaY = Math.abs(currentPos.y - touchStartPosRef.current.y);
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // If movement exceeds 5px threshold, mark as moved
-    if (distance > 5) {
-      hasMovedRef.current = true;
-      
-      if (isTouchEvent && !isDraggingRef.current) {
-        // Cancel long-press if movement is primarily vertical (scrolling intent)
-        // This allows normal scrolling without activating drag
-        if (distance > 15 && deltaY > deltaX * 1.2 && longPressTimerRef.current) {
-          // Primarily vertical movement suggests scrolling - cancel drag immediately
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-          // Reset press state to allow normal scrolling
-          setIsPressed(false);
-          isPressedRef.current = false;
-          // Clear touch start position so handler doesn't process further
-          touchStartPosRef.current = null;
-          // Return early to let browser handle scrolling naturally
-          return;
-        }
-        // Small movements or horizontal movements don't cancel - allows drag to activate
-      }
-    }
   };
 
-  // Handle press end
-  const handlePressEnd = (e) => {
+  // Handle drag handle end
+  const handleDragHandleEnd = (e) => {
+    e.stopPropagation();
     setIsPressed(false);
     isPressedRef.current = false;
     isDraggingRef.current = false;
     setIsLocalDragging(false);
-
-    // Clear long-press timer
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-
-    // Calculate final position and movement distance
-    // Always check final position to catch any movement, even if move events were missed
-    let finalPos = null;
-    if (e && touchStartPosRef.current) {
-      // Check if it's a touch event (touchend)
-      const isTouchEvent =
-        (e.type && (e.type === "touchend" || e.type.includes("touch"))) ||
-        (e.changedTouches && e.changedTouches.length > 0);
-
-      if (isTouchEvent && e.changedTouches && e.changedTouches.length > 0) {
-        // For touch events, use changedTouches (the touch that ended)
-        finalPos = {
-          x: e.changedTouches[0].clientX,
-          y: e.changedTouches[0].clientY,
-        };
-      } else if (e.clientX !== undefined && e.clientY !== undefined) {
-        // For mouse events
-        finalPos = {
-          x: e.clientX,
-          y: e.clientY,
-        };
-      }
-
-      // Calculate total movement distance from start to end
-      if (finalPos && touchStartPosRef.current) {
-        const deltaX = Math.abs(finalPos.x - touchStartPosRef.current.x);
-        const deltaY = Math.abs(finalPos.y - touchStartPosRef.current.y);
-        const totalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-        // If movement exceeds 5px threshold, it's definitely a swipe, not a tap
-        if (totalDistance > 5) {
-          hasMovedRef.current = true;
-        }
-      }
-    }
-
-    // Check if it was a tap (quick AND no movement at all)
-    const pressDuration = Date.now() - (dragStartTimeRef.current || 0);
-    const wasTap =
-      pressDuration < 300 &&
-      !hasMovedRef.current &&
-      !isDragging &&
-      touchStartPosRef.current !== null; // Ensure we had a valid start position
-
-    // Reset movement tracking
-    hasMovedRef.current = false;
     touchStartPosRef.current = null;
-
-    // Only trigger toggle if it was definitely a tap (no movement detected)
-    if (wasTap) {
-      // This was a tap, allow toggle
-      const completed = isCompletedToday(habit);
-      onToggle(habit._id, completed);
-    }
   };
 
-  // Cancel drag on scroll or movement
-  const handlePressCancel = () => {
+  // Cancel drag handle interaction
+  const handleDragHandleCancel = () => {
     setIsPressed(false);
     isPressedRef.current = false;
     isDraggingRef.current = false;
     setIsLocalDragging(false);
-    hasMovedRef.current = false;
     touchStartPosRef.current = null;
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
   };
 
   // Sync local dragging state with parent's isDragging prop
@@ -238,41 +115,42 @@ const DraggableHabitCard = ({
       className={`glass rounded-xl p-4 flex items-center gap-4 transition-all select-none ${
         completed ? "border border-green-500/30" : ""
       } ${isDragging ? "opacity-40 scale-95" : ""} ${
-        isPressed && !isDragging ? "scale-98" : ""
-      } ${!isDragging ? "hover:bg-white/10" : ""}`}
+        !isDragging ? "hover:bg-white/10" : ""
+      }`}
       style={{
-        cursor: isDragging ? "grabbing" : "grab",
-        touchAction: (isDragging || isLocalDragging) ? "none" : "pan-y",
+        touchAction: "pan-y", // Always allow vertical scrolling
       }}
-      // Mouse events
-      onMouseDown={(e) => handlePressStart(e, false)}
-      onMouseMove={handlePressMove}
-      onMouseUp={handlePressEnd}
-      onMouseLeave={handlePressCancel}
-      // Touch events
-      onTouchStart={(e) => {
-        // If already dragging, prevent new touch starts
-        if (isDragging || isLocalDragging) {
-          e.preventDefault();
-          e.stopPropagation();
+      onClick={(e) => {
+        // Don't toggle if clicking on drag handle, buttons, or checkbox
+        if (
+          e.target.closest(".drag-handle") ||
+          e.target.closest("button") ||
+          e.target.closest(".checkbox")
+        ) {
           return;
         }
-        // Don't prevent default - allow normal touch behavior
-        handlePressStart(e, true);
+        // Toggle habit completion
+        const completed = isCompletedToday(habit);
+        onToggle(habit._id, completed);
       }}
-      onTouchMove={handlePressMove}
-      onTouchEnd={(e) => {
-        // If dragging, let document handler take over (don't stop propagation)
-        if (isDragging || isLocalDragging) {
-          // Don't stop propagation - document handler needs touchend
-          return;
-        }
-        handlePressEnd(e);
-      }}
-      onTouchCancel={handlePressCancel}
     >
       {/* Drag Handle Indicator */}
-      <div className="flex flex-col gap-0.5 text-gray-600">
+      <div
+        className="drag-handle flex flex-col gap-0.5 text-gray-600 cursor-grab active:cursor-grabbing touch-none"
+        style={{
+          touchAction: "none", // Prevent scrolling when touching handle
+        }}
+        // Mouse events for drag handle
+        onMouseDown={(e) => handleDragHandleStart(e, false)}
+        onMouseMove={handleDragHandleMove}
+        onMouseUp={handleDragHandleEnd}
+        onMouseLeave={handleDragHandleCancel}
+        // Touch events for drag handle
+        onTouchStart={(e) => handleDragHandleStart(e, true)}
+        onTouchMove={handleDragHandleMove}
+        onTouchEnd={handleDragHandleEnd}
+        onTouchCancel={handleDragHandleCancel}
+      >
         <div className="w-1 h-1 rounded-full bg-current"></div>
         <div className="w-1 h-1 rounded-full bg-current"></div>
         <div className="w-1 h-1 rounded-full bg-current"></div>
