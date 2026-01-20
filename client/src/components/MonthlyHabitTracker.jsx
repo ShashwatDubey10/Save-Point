@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 
+// Helper to get YYYY-MM-DD string from a date (local timezone)
+const getDateString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const MonthlyHabitTracker = memo(({ habits = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState({
@@ -46,6 +54,7 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
       day
     );
     targetDate.setHours(0, 0, 0, 0);
+    const targetDateString = getDateString(targetDate);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -58,10 +67,11 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
     if (!habit.completions || habit.completions.length === 0) return 0;
 
     // Find if there's a completion for this date
+    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      completionDate.setHours(0, 0, 0, 0);
-      return completionDate.getTime() === targetDate.getTime();
+      const completionDateString = getDateString(completionDate);
+      return completionDateString === targetDateString;
     });
 
     return completion ? 1 : 0;

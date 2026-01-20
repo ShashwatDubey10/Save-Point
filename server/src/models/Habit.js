@@ -183,10 +183,59 @@ habitSchema.methods.uncomplete = function() {
   return true;
 };
 
+// Helper to get YYYY-MM-DD string from a date (using local date components)
+function getDateString(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Method to normalise a date input (string or Date) to a local midnight Date
+function normaliseToLocalDate(targetDate) {
+  if (!targetDate) return null;
+
+  // If it's a string in YYYY-MM-DD format, parse as local date (not UTC)
+  if (typeof targetDate === 'string') {
+    const parts = targetDate.split('-');
+    if (parts.length === 3) {
+      const year = Number(parts[0]);
+      const month = Number(parts[1]) - 1; // 0-based
+      const day = Number(parts[2]);
+      const d = new Date(year, month, day);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+  }
+
+  // If it's already a Date, extract local date components and create new date
+  if (targetDate instanceof Date) {
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    const day = targetDate.getDate();
+    const d = new Date(year, month, day);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  // Fallback – let JS parse, then extract local components
+  const d = new Date(targetDate);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const day = d.getDate();
+  const normalized = new Date(year, month, day);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+}
+
 // Method to complete habit for a specific date
 habitSchema.methods.completeForDate = function(targetDate, note = '', mood = null) {
-  const date = new Date(targetDate);
-  date.setHours(0, 0, 0, 0);
+  const date = normaliseToLocalDate(targetDate);
+  if (!date || isNaN(date.getTime())) {
+    return false;
+  }
 
   // Check if habit was created after this date
   const habitCreatedDate = new Date(this.createdAt);
@@ -196,10 +245,11 @@ habitSchema.methods.completeForDate = function(targetDate, note = '', mood = nul
   }
 
   // Check if already completed for this date
+  // Compare by date string to avoid timezone issues
+  const targetDateString = getDateString(date);
   const existingCompletion = this.completions.find(c => {
-    const completionDate = new Date(c.date);
-    completionDate.setHours(0, 0, 0, 0);
-    return completionDate.getTime() === date.getTime();
+    const completionDateString = getDateString(c.date);
+    return completionDateString === targetDateString;
   });
 
   if (existingCompletion) {
@@ -230,14 +280,17 @@ habitSchema.methods.completeForDate = function(targetDate, note = '', mood = nul
 
 // Method to uncomplete habit for a specific date
 habitSchema.methods.uncompleteForDate = function(targetDate) {
-  const date = new Date(targetDate);
-  date.setHours(0, 0, 0, 0);
+  const date = normaliseToLocalDate(targetDate);
+  if (!date || isNaN(date.getTime())) {
+    return false;
+  }
 
   // Find and remove completion for this date
+  // Compare by date string to avoid timezone issues
+  const targetDateString = getDateString(date);
   const completionIndex = this.completions.findIndex(c => {
-    const completionDate = new Date(c.date);
-    completionDate.setHours(0, 0, 0, 0);
-    return completionDate.getTime() === date.getTime();
+    const completionDateString = getDateString(c.date);
+    return completionDateString === targetDateString;
   });
 
   if (completionIndex === -1) {

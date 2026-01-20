@@ -54,6 +54,14 @@ const HabitTrackingPage = () => {
   const monthName = monthNames[currentDate.getMonth()];
   const year = currentDate.getFullYear();
 
+  // Helper to get YYYY-MM-DD string from a date (local timezone)
+  const getDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Check if habit is completed for a specific date
   const isCompletedForDate = (habit, day) => {
     const targetDate = new Date(
@@ -61,7 +69,7 @@ const HabitTrackingPage = () => {
       currentDate.getMonth(),
       day
     );
-    targetDate.setHours(0, 0, 0, 0);
+    const targetDateString = getDateString(targetDate);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -74,10 +82,11 @@ const HabitTrackingPage = () => {
       return false;
     }
 
+    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      completionDate.setHours(0, 0, 0, 0);
-      return completionDate.getTime() === targetDate.getTime();
+      const completionDateString = getDateString(completionDate);
+      return completionDateString === targetDateString;
     });
 
     return completion ? true : false;
@@ -101,7 +110,8 @@ const HabitTrackingPage = () => {
     }
 
     const isCompleted = isCompletedForDate(habit, day);
-    const dateString = targetDate.toISOString().split('T')[0];
+    // Use local date string, not UTC (toISOString gives UTC which can shift the date)
+    const dateString = getDateString(targetDate);
 
     try {
       if (isCompleted) {
