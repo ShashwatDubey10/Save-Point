@@ -29,8 +29,8 @@ export default defineConfig({
   build: {
     // Enable minification with esbuild (faster than terser)
     minify: 'esbuild',
-    // Target modern browsers for smaller bundles
-    target: 'esnext',
+    // Target modern browsers but ensure compatibility
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     // Chunk splitting strategy
     rollupOptions: {
       output: {
@@ -56,27 +56,40 @@ export default defineConfig({
             return 'vendor';
           }
         },
-        // Optimize chunk file names
+        // Optimize chunk file names - ensure proper format for deployment
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
-        assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `assets/images/[name]-[hash][extname]`;
+          }
+          if (/woff2?|eot|ttf|otf/i.test(ext)) {
+            return `assets/fonts/[name]-[hash][extname]`;
+          }
+          return `assets/[ext]/[name]-[hash][extname]`;
+        },
       },
     },
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
     // Enable CSS code splitting
     cssCodeSplit: true,
-    // Enable source maps for production debugging (optional, can disable for smaller builds)
+    // Disable source maps for production (smaller builds)
     sourcemap: false,
     // Improve build performance
     reportCompressedSize: true,
     // Reduce asset inline threshold (smaller assets will be inlined)
     assetsInlineLimit: 4096,
+    // Ensure proper output directory structure
+    outDir: 'dist',
+    emptyOutDir: true,
   },
   // Performance optimizations
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'axios'],
-    // Force React to be pre-bundled to avoid multiple instances
-    force: true,
+    // Only force in development to avoid deployment issues
+    force: process.env.NODE_ENV === 'development',
   }
 })
