@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
 import AppHeader from '../components/AppHeader';
 import AppNavigation from '../components/AppNavigation';
 
-const HabitTrackingPage = () => {
+function HabitTrackingPage() {
+  const location = useLocation();
   const { refreshUser } = useAuth();
   const [habits, setHabits] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,21 +20,24 @@ const HabitTrackingPage = () => {
   const touchStartX = useRef({});
   const touchStartY = useRef({});
 
-  useEffect(() => {
-    fetchHabits();
-  }, []);
-
-  const fetchHabits = async () => {
+  const fetchHabits = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
       const response = await habitService.getAll();
       setHabits(response.data || []);
     } catch (err) {
       setError('Failed to load habits');
-      console.error(err);
+      console.error('Error fetching habits:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch habits on mount and when navigating to this page
+  useEffect(() => {
+    fetchHabits();
+  }, [fetchHabits, location.pathname]);
 
   // Helper to get YYYY-MM-DD string from a date
   const getDateString = (date, useUTC = false) => {
@@ -87,9 +91,12 @@ const HabitTrackingPage = () => {
   const year = currentDate.getFullYear();
 
   // Check if habit is completed for a specific date
+  // Backend normalizes dates: when user sends "2024-01-26", backend creates UTC midnight for that calendar date
+  // So we compare: local calendar date (what user sees) with UTC date string from backend (calendar date stored)
   const isCompletedForDate = (habit, day) => {
     const targetDate = getDateForDay(day);
-    const targetDateString = getDateString(targetDate);
+    // Get the local calendar date the user sees (this is what we send to backend)
+    const targetDateString = getDateString(targetDate, false); // Local calendar date
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -102,12 +109,16 @@ const HabitTrackingPage = () => {
       return false;
     }
 
-    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
-    // Use UTC for backend dates, local for UI dates
+    // Compare dates by their YYYY-MM-DD string representation
+    // Backend stores dates as UTC midnight for the calendar date specified
+    // When we retrieve, we extract UTC components to get the calendar date that was stored
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      // Backend dates are stored as UTC, so extract UTC components
+      // Backend stored this as UTC midnight for a specific calendar date
+      // Extract UTC components to get that calendar date
       const completionDateString = getDateString(completionDate, true);
+      // Compare with the local calendar date the user is viewing
+      // They match if it's the same calendar day
       return completionDateString === targetDateString;
     });
 
@@ -131,22 +142,71 @@ const HabitTrackingPage = () => {
     // Use local date string, not UTC (toISOString gives UTC which can shift the date)
     const dateString = getDateString(targetDate);
 
+    // Store previous state for rollback
+    const previousHabitState = { ...habit };
+
+    // Optimistic UI update - update immediately without waiting for server
+    setHabits(prevHabits =>
+      prevHabits.map(h => {
+        if (h._id === habit._id) {
+          const updatedHabit = { ...h };
+          const targetDateString = getDateString(targetDate, false);
+          
+          if (isCompleted) {
+            // Remove completion for this date
+            updatedHabit.completions = (h.completions || []).filter(c => {
+              const completionDate = new Date(c.date);
+              const completionDateString = getDateString(completionDate, true);
+              return completionDateString !== targetDateString;
+            });
+          } else {
+            // Add completion for this date
+            const completionDate = new Date(dateString + 'T00:00:00Z');
+            updatedHabit.completions = [
+              ...(h.completions || []),
+              { date: completionDate.toISOString(), note: '', mood: null }
+            ];
+          }
+          return updatedHabit;
+        }
+        return h;
+      })
+    );
+
     try {
+      let response;
       if (isCompleted) {
-        await habitService.uncompleteForDate(habit._id, dateString);
+        response = await habitService.uncompleteForDate(habit._id, dateString);
         toast.success(`${habit.title || habit.name} marked as incomplete`);
       } else {
-        await habitService.completeForDate(habit._id, dateString);
+        response = await habitService.completeForDate(habit._id, dateString);
         toast.success(`${habit.title || habit.name} marked as complete`);
       }
-      
-      await Promise.all([
-        fetchHabits(),
-        refreshUser()
-      ]);
+
+      // Update the specific habit with server response if available
+      if (response?.data?.habit) {
+        setHabits(prevHabits =>
+          prevHabits.map(h =>
+            h._id === habit._id ? response.data.habit : h
+          )
+        );
+      }
+
+      // Update user data in background without blocking UI
+      // Fire and forget - don't await to prevent blocking
+      refreshUser().catch(() => {
+        // Silent fail - non-critical
+      });
     } catch (err) {
       console.error('Failed to toggle habit:', err);
       toast.error('Failed to update habit. Please try again.');
+
+      // Revert optimistic update on error
+      setHabits(prevHabits =>
+        prevHabits.map(h =>
+          h._id === habit._id ? previousHabitState : h
+        )
+      );
     }
   };
 

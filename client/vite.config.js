@@ -18,6 +18,13 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    hmr: {
+      clientPort: 5173,
+    },
+  },
+  resolve: {
+    // Ensure single React instance - deduplicate React and React-DOM
+    dedupe: ['react', 'react-dom'],
   },
   build: {
     // Enable minification with esbuild (faster than terser)
@@ -29,9 +36,15 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           // Split vendor libraries into separate chunks
+          // IMPORTANT: Keep React and React-DOM together to avoid multiple instances
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            // React and React-DOM must be in the same chunk
+            if (id.includes('react') || id.includes('react-dom')) {
               return 'react-vendor';
+            }
+            // React Router can be separate but will use the same React instance
+            if (id.includes('react-router')) {
+              return 'router-vendor';
             }
             if (id.includes('@dnd-kit')) {
               return 'dnd-vendor';
@@ -63,17 +76,7 @@ export default defineConfig({
   // Performance optimizations
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'axios'],
-    // Exclude from pre-bundling to reduce initial load
-    exclude: [],
-  },
-  // Enable experimental features for better performance
-  experimental: {
-    renderBuiltUrl(filename, { hostType }) {
-      // Use CDN for assets in production if available
-      if (hostType === 'js' && process.env.VITE_CDN_URL) {
-        return `${process.env.VITE_CDN_URL}/${filename}`;
-      }
-      return { relative: true };
-    }
+    // Force React to be pre-bundled to avoid multiple instances
+    force: true,
   }
 })

@@ -33,8 +33,20 @@ export const habitService = {
     return response.data;
   },
 
-  async complete(id) {
-    const response = await api.post(`/habits/${id}/complete`);
+  async complete(id, date = null) {
+    // Send the user's local date in YYYY-MM-DD format to ensure correct calendar day
+    // If no date provided, use today in user's local timezone
+    let body = {};
+    if (!date) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      body.date = `${year}-${month}-${day}`;
+    } else {
+      body.date = date;
+    }
+    const response = await api.post(`/habits/${id}/complete`, body);
     // Invalidate habits and analytics cache
     apiCache.invalidate('/habits');
     apiCache.invalidate('/analytics');

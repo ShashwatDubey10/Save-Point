@@ -85,8 +85,10 @@ const HabitsPage = () => {
   };
 
   // Check if habit is completed for a specific date (consistent with HabitTrackingPage)
+  // Backend stores dates as UTC midnight, so we compare using UTC date strings
   const isCompletedForDate = (habit, date) => {
-    const targetDateString = getDateString(date);
+    // Convert target date to UTC date string for comparison with backend dates
+    const targetDateString = getDateString(date, true); // Use UTC for comparison
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -100,8 +102,10 @@ const HabitsPage = () => {
     }
 
     // Compare dates by their YYYY-MM-DD string representation
+    // Backend dates are stored as UTC midnight, extract UTC date string
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
+      // Use UTC for backend dates
       const completionDateString = getDateString(completionDate, true);
       return completionDateString === targetDateString;
     });

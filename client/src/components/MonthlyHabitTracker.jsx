@@ -65,7 +65,8 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
       day
     );
     targetDate.setHours(0, 0, 0, 0);
-    const targetDateString = getDateString(targetDate);
+    // Backend stores dates as UTC midnight, so compare using UTC date strings
+    const targetDateString = getDateString(targetDate, true);
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -78,11 +79,11 @@ const MonthlyHabitTracker = memo(({ habits = [] }) => {
     if (!habit.completions || habit.completions.length === 0) return 0;
 
     // Find if there's a completion for this date
-    // Compare dates by their YYYY-MM-DD string representation to avoid timezone issues
-    // Use UTC for backend dates, local for UI dates
+    // Compare dates by their YYYY-MM-DD string representation
+    // Backend dates are stored as UTC midnight, extract UTC date string
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
-      // Backend dates are stored as UTC, so extract UTC components
+      // Use UTC for backend dates
       const completionDateString = getDateString(completionDate, true);
       return completionDateString === targetDateString;
     });
