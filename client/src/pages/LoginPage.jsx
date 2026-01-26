@@ -55,7 +55,7 @@ const LoginPage = () => {
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in-up">
           <Link to="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
-            <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-16" />
+            <img src="/SavePointLogoHeader.png" alt="Save Point" className="h-16" loading="eager" fetchpriority="high" />
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2 mt-6">Welcome Back</h1>
           <p className="text-gray-400">Continue your habit-building journey</p>

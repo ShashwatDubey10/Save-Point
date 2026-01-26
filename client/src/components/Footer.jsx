@@ -70,7 +70,7 @@ const Footer = () => {
           {/* Brand column */}
           <div className="col-span-2">
             <a href="/" className="inline-block">
-              <img src="/SavePointLogo.png" alt="Save Point" className="h-12" />
+              <img src="/SavePointLogo.png" alt="Save Point" className="h-12" loading="lazy" />
             </a>
             <p className="mt-4 text-gray-400 max-w-xs leading-relaxed">
               Build powerful habits with gamification. Track progress, earn rewards, and transform your life.

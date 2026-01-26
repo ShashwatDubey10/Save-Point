@@ -135,11 +135,11 @@ export const deleteHabit = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Complete habit for today
+// @desc    Complete habit for today (or specified date)
 // @route   POST /api/habits/:id/complete
 // @access  Private
 export const completeHabit = asyncHandler(async (req, res) => {
-  const { note, mood } = req.body;
+  const { note, mood, date } = req.body;
 
   const habit = await Habit.findById(req.params.id);
 
@@ -158,16 +158,31 @@ export const completeHabit = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if already completed
-  if (habit.isCompletedToday()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Habit already completed today'
-    });
-  }
+  // If date is provided, use completeForDate to ensure correct calendar day
+  // This allows the frontend to send the user's local "today" date
+  // Otherwise, use complete() for server's today
+  if (date) {
+    // Complete for specified date (user's local date)
+    const success = habit.completeForDate(date, note, mood);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Habit already completed for this date or date is invalid'
+      });
+    }
+  } else {
+    // Check if already completed today (server time)
+    if (habit.isCompletedToday()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Habit already completed today'
+      });
+    }
 
-  // Complete habit
-  habit.complete(note, mood);
+    // Complete habit for today (server time)
+    habit.complete(note, mood);
+  }
+  
   await habit.save();
 
   // Award points to user

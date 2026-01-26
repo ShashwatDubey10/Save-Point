@@ -18,6 +18,8 @@ const Header = () => {
                 src="/SavePointHeaderLogo2.png"
                 alt="Save Point"
                 className="h-10"
+                loading="eager"
+                fetchpriority="high"
               />
             </a>
           </div>

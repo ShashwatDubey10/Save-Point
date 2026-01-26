@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { habitService } from '../services/habitService';
@@ -14,12 +14,15 @@ import DraggableHabitList from '../components/DraggableHabitList';
 import { PageContainer, MainContent, ErrorMessage, LoadingSpinner, EmptyState } from '../utils/pageLayout';
 
 const DashboardPage = () => {
-  const { user, refreshUser } = useAuth();
+  const { user: contextUser, refreshUser } = useAuth();
+  const location = useLocation();
   const [habits, setHabits] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Local user state to prevent re-renders when context user updates
+  const [localUser, setLocalUser] = useState(contextUser);
 
   // Modal states
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
@@ -27,12 +30,11 @@ const DashboardPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [habitToDelete, setHabitToDelete] = useState(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       // Fetch habits, tasks, and weekly summary
       const [habitsResponse, tasksResponse, weeklyResponse] = await Promise.all([
         habitService.getAll(),
@@ -50,12 +52,35 @@ const DashboardPage = () => {
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error('Dashboard load error:', err);
+      // Set empty arrays on error to prevent stale data
+      setHabits([]);
+      setTasks([]);
+      setWeeklyData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchHabits = async () => {
+  // Sync local user state with context user (only on mount or when context user changes significantly)
+  useEffect(() => {
+    if (contextUser) {
+      setLocalUser(contextUser);
+    }
+  }, [contextUser?.gamification?.level, contextUser?.gamification?.points]); // Only update on level/points changes
+
+  // Initialize localUser on mount
+  useEffect(() => {
+    if (contextUser && !localUser) {
+      setLocalUser(contextUser);
+    }
+  }, []);
+
+  // Fetch data on mount and when navigating to this page
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData, location.pathname]);
+
+  const fetchHabits = useCallback(async () => {
     try {
       const data = await habitService.getAll();
       setHabits(data.data || []);
@@ -63,64 +88,131 @@ const DashboardPage = () => {
       setError('Failed to load habits');
       console.error(err);
     }
+  }, []);
+
+  // Helper to get YYYY-MM-DD string from a date (consistent with HabitTrackingPage)
+  // Defined as a regular function (not useCallback) since it doesn't depend on state/props
+  const getDateString = (date, useUTC = false) => {
+    if (useUTC) {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
   };
 
-  // Check if habit is completed today (same as HabitsPage)
-  const isCompletedToday = (habit) => {
+  // Check if habit is completed today (consistent with isCompletedForDate)
+  // Backend stores dates as UTC midnight for the calendar date specified
+  // We compare: local calendar date (what user sees as "today") with UTC date string from backend
+  const isCompletedToday = useCallback((habit) => {
     if (!habit || !habit.completions || habit.completions.length === 0) {
       return false;
     }
 
+    // Get today's local calendar date (what the user sees as "today")
+    // This is what we send to the backend when completing a habit
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayLocalString = getDateString(today, false); // Local calendar date
 
     const lastCompletionData = habit.completions[habit.completions.length - 1];
     if (!lastCompletionData || !lastCompletionData.date) {
       return false;
     }
 
+    // Backend stores dates as UTC midnight for the calendar date
+    // Extract UTC components to get the calendar date that was stored
     const lastCompletion = new Date(lastCompletionData.date);
-    lastCompletion.setHours(0, 0, 0, 0);
+    const lastCompletionString = getDateString(lastCompletion, true); // UTC date string (calendar date stored)
 
-    return lastCompletion.getTime() === today.getTime();
-  };
+    // Compare local calendar date with UTC calendar date from backend
+    // They match if it's the same calendar day
+    return lastCompletionString === todayLocalString;
+  }, []);
 
-  const toggleHabit = async (id, completed) => {
-    // Optimistic UI update
-    setHabits(prevHabits =>
-      prevHabits.map(habit => {
+  const toggleHabit = useCallback(async (id, completed) => {
+    // Store the previous habit state for potential rollback
+    let previousHabitState = null;
+    
+    // Optimistic UI update - update immediately without waiting for server
+    setHabits(prevHabits => {
+      // Capture the previous state of this specific habit for rollback
+      const habitToUpdate = prevHabits.find(h => h._id === id);
+      if (habitToUpdate) {
+        previousHabitState = { ...habitToUpdate };
+      }
+      
+      return prevHabits.map(habit => {
         if (habit._id === id) {
           const updatedHabit = { ...habit };
           if (completed) {
             // Remove last completion
-            updatedHabit.completions = habit.completions.slice(0, -1);
+            updatedHabit.completions = (habit.completions || []).slice(0, -1);
           } else {
-            // Add completion for today
+            // Add completion for today with proper date format
+            const today = new Date();
+            const todayString = getDateString(today, false);
+            // Create a UTC midnight date for the calendar date
+            const completionDate = new Date(todayString + 'T00:00:00Z');
             updatedHabit.completions = [
               ...(habit.completions || []),
-              { date: new Date(), note: '', mood: null }
+              { date: completionDate.toISOString(), note: '', mood: null }
             ];
           }
           return updatedHabit;
         }
         return habit;
-      })
-    );
+      });
+    });
 
     try {
+      let response;
       if (completed) {
-        await habitService.uncomplete(id);
+        response = await habitService.uncomplete(id);
         toast.success('Habit marked as incomplete');
       } else {
-        const response = await habitService.complete(id);
+        response = await habitService.complete(id);
         const points = response.data?.points?.earned || 10;
         toast.success(`Habit completed! +${points} XP earned 🎉`);
       }
-      // Refresh data and user info to get accurate server state
-      await Promise.all([
-        fetchDashboardData(),
-        refreshUser()
-      ]);
+
+      // Update the specific habit with server response if available
+      // This ensures we have the exact server state (with proper date formatting, etc.)
+      if (response?.data?.habit) {
+        setHabits(prevHabits =>
+          prevHabits.map(habit =>
+            habit._id === id ? response.data.habit : habit
+          )
+        );
+      }
+
+      // Update user stats locally from response to avoid full page re-render
+      // This prevents the context user update from causing a re-render
+      if (response?.data?.user) {
+        // Full user object returned - use it directly
+        setLocalUser(response.data.user);
+      } else if (response?.data?.points) {
+        // Only points returned - update local user gamification optimistically
+        setLocalUser(prevUser => {
+          if (!prevUser) return prevUser;
+          const newPoints = (prevUser.gamification?.points || 0) + (response.data.points.earned || 0);
+          const newLevel = response.data.points.level || prevUser.gamification?.level || 1;
+          return {
+            ...prevUser,
+            gamification: {
+              ...prevUser.gamification,
+              points: newPoints,
+              level: newLevel
+            }
+          };
+        });
+      }
+      // Note: We don't call refreshUser() here to prevent context updates that cause re-renders
+      // The context will sync naturally on next page navigation or manual refresh
     } catch (err) {
       console.error('Failed to toggle habit:', err);
 
@@ -128,27 +220,36 @@ const DashboardPage = () => {
       const errorMessage = err.response?.data?.message || 'Failed to update habit. Please try again.';
       toast.error(errorMessage);
 
-      // Refresh to revert optimistic update and ensure UI is in sync
-      await fetchDashboardData();
+      // Revert optimistic update on error by restoring the previous habit state
+      if (previousHabitState) {
+        setHabits(prevHabits =>
+          prevHabits.map(habit =>
+            habit._id === id ? previousHabitState : habit
+          )
+        );
+      } else {
+        // Fallback: refetch if we don't have previous state
+        await fetchDashboardData();
+      }
     }
-  };
+  }, [getDateString, refreshUser, fetchDashboardData]);
 
   // Create new habit
-  const handleCreateHabit = () => {
+  const handleCreateHabit = useCallback(() => {
     setEditingHabit(null);
     setIsHabitModalOpen(true);
-  };
+  }, []);
 
   // Edit habit
-  const handleEditHabit = (habit, e) => {
+  const handleEditHabit = useCallback((habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking edit
     e.preventDefault(); // Prevent any default behavior
     setEditingHabit(habit);
     setIsHabitModalOpen(true);
-  };
+  }, []);
 
   // Save habit (create or update)
-  const handleSaveHabit = async (habitData) => {
+  const handleSaveHabit = useCallback(async (habitData) => {
     try {
       if (editingHabit) {
         // Update existing habit
@@ -167,17 +268,17 @@ const DashboardPage = () => {
       toast.error('Failed to save habit. Please try again.');
       throw err; // Re-throw to let the modal handle the error
     }
-  };
+  }, [editingHabit, fetchDashboardData]);
 
   // Delete habit
-  const handleDeleteClick = (habit, e) => {
+  const handleDeleteClick = useCallback((habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking delete
     e.preventDefault(); // Prevent any default behavior
     setHabitToDelete(habit);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!habitToDelete) return;
 
     try {
@@ -191,10 +292,10 @@ const DashboardPage = () => {
       toast.error('Failed to delete habit. Please try again.');
       setError('Failed to delete habit');
     }
-  };
+  }, [fetchDashboardData, habitToDelete]);
 
   // Reorder habits
-  const handleReorder = async (reorderedHabits) => {
+  const handleReorder = useCallback(async (reorderedHabits) => {
     // Optimistically update UI
     setHabits(reorderedHabits);
 
@@ -211,35 +312,29 @@ const DashboardPage = () => {
       // Revert on error
       await fetchHabits();
     }
-  };
+  }, [fetchHabits]);
 
+  // Memoize expensive computations
+  const completedCount = useMemo(() => 
+    habits.filter(h => isCompletedToday(h)).length,
+    [habits, isCompletedToday]
+  );
 
-
-  const completedCount = habits.filter(h => isCompletedToday(h)).length;
-  const totalXP = user?.gamification?.points || 0;
-  const level = user?.gamification?.level || 1;
-  const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
-  const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
-  const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
-
-  // Helper to get YYYY-MM-DD string from a date (consistent with HabitTrackingPage)
-  const getDateString = (date, useUTC = false) => {
-    if (useUTC) {
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } else {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-  };
+  // Memoize gamification calculations using localUser to prevent re-renders
+  const { totalXP, level, xpForNextLevel, pointsInLevel, xpProgress } = useMemo(() => {
+    const totalXP = localUser?.gamification?.points || 0;
+    const level = localUser?.gamification?.level || 1;
+    const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
+    const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
+    const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
+    return { totalXP, level, xpForNextLevel, pointsInLevel, xpProgress };
+  }, [localUser?.gamification?.points, localUser?.gamification?.level]);
 
   // Check if habit is completed for a specific date
-  const isCompletedForDate = (habit, date) => {
-    const targetDateString = getDateString(date);
+  // Backend stores dates as UTC midnight, so we compare using UTC date strings
+  const isCompletedForDate = useCallback((habit, date) => {
+    // Convert target date to UTC date string for comparison with backend dates
+    const targetDateString = getDateString(date, true); // Use UTC for comparison
 
     // Check if habit was created after this date
     const habitCreatedDate = new Date(habit.createdAt);
@@ -253,20 +348,22 @@ const DashboardPage = () => {
     }
 
     // Compare dates by their YYYY-MM-DD string representation
+    // Backend dates are stored as UTC midnight, extract UTC date string
     const completion = habit.completions.find(c => {
       const completionDate = new Date(c.date);
+      // Use UTC for backend dates
       const completionDateString = getDateString(completionDate, true);
       return completionDateString === targetDateString;
     });
 
     return completion ? true : false;
-  };
+  }, []);
 
   // Week days labels (Monday to Sunday)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // Calculate weekly progress from habits (fallback if API data unavailable)
-  const calculateWeeklyProgress = () => {
+  const calculateWeeklyProgress = useCallback(() => {
     if (habits.length === 0) {
       return [0, 0, 0, 0, 0, 0, 0];
     }
@@ -304,32 +401,50 @@ const DashboardPage = () => {
     }
 
     return weekProgress;
-  };
+  }, [habits, isCompletedForDate]);
 
   // Get weekly progress from analytics data or calculate from habits
-  let weekProgress = [0, 0, 0, 0, 0, 0, 0];
+  const weekProgress = useMemo(() => {
+    let progress = [0, 0, 0, 0, 0, 0, 0];
 
-  if (weeklyData?.habits?.dailyBreakdown && weeklyData.habits.dailyBreakdown.length === 7) {
-    // Use API data if available and properly formatted
-    // Backend returns Sunday-Saturday, but we need Monday-Sunday
-    // So we need to reorder: take last day (Sun) and put it first, then Mon-Sat
-    const apiData = weeklyData.habits.dailyBreakdown;
-    const reorderedData = [
-      ...apiData.slice(1), // Mon-Sat
-      apiData[0]           // Sun (moved to end)
-    ];
-    weekProgress = reorderedData.map(day => day.completionRate || 0);
-  } else {
-    // Fallback: calculate from habits directly
-    weekProgress = calculateWeeklyProgress();
-  }
+    if (weeklyData?.habits?.dailyBreakdown && weeklyData.habits.dailyBreakdown.length === 7) {
+      // Use API data if available and properly formatted
+      // Backend returns Sunday-Saturday, but we need Monday-Sunday
+      // So we need to reorder: take last day (Sun) and put it first, then Mon-Sat
+      const apiData = weeklyData.habits.dailyBreakdown;
+      const reorderedData = [
+        ...apiData.slice(1), // Mon-Sat
+        apiData[0]           // Sun (moved to end)
+      ];
+      progress = reorderedData.map(day => day.completionRate || 0);
+    } else {
+      // Fallback: calculate from habits directly
+      progress = calculateWeeklyProgress();
+    }
+    return progress;
+  }, [weeklyData, calculateWeeklyProgress]);
 
-  const getGreeting = () => {
+  const getGreeting = useCallback(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
-  };
+  }, []);
+
+  // Memoize sorted tasks
+  const sortedTasks = useMemo(() => {
+    return tasks
+      .sort((a, b) => {
+        // Sort by due date (earliest first)
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate) - new Date(b.dueDate);
+        }
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return 0;
+      })
+      .slice(0, 6);
+  }, [tasks]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -344,7 +459,7 @@ const DashboardPage = () => {
         {/* Welcome Section */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-            {getGreeting()}, <span className="gradient-text">{user?.username || 'User'}</span>! 👋
+            {getGreeting()}, <span className="gradient-text">{localUser?.username || contextUser?.username || 'User'}</span>! 👋
           </h1>
           <p className="text-sm sm:text-base text-gray-400">
             {habits.length > 0
@@ -386,7 +501,7 @@ const DashboardPage = () => {
               </div>
               <div>
                 <p className="text-gray-400 text-xs sm:text-sm">Streak</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{user?.gamification?.longestStreak || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{localUser?.gamification?.longestStreak || 0}</p>
               </div>
             </div>
           </Link>
@@ -554,8 +669,8 @@ const DashboardPage = () => {
             <div className="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
               <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Recent Achievements</h3>
               <div className="space-y-3">
-                {user?.gamification?.badges && user.gamification.badges.length > 0 ? (
-                  user.gamification.badges.slice(0, 3).map((badge, i) => (
+                {localUser?.gamification?.badges && localUser.gamification.badges.length > 0 ? (
+                  localUser.gamification.badges.slice(0, 3).map((badge, i) => (
                     <div key={badge._id || i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-xl">
                         {badge.icon || '🌟'}
@@ -615,18 +730,7 @@ const DashboardPage = () => {
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {tasks
-                .sort((a, b) => {
-                  // Sort by due date (earliest first)
-                  if (a.dueDate && b.dueDate) {
-                    return new Date(a.dueDate) - new Date(b.dueDate);
-                  }
-                  if (a.dueDate) return -1;
-                  if (b.dueDate) return 1;
-                  return 0;
-                })
-                .slice(0, 6)
-                .map((task) => {
+              {sortedTasks.map((task) => {
                   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                   const isOverdue = dueDate && dueDate < new Date();
                   const daysUntilDue = dueDate ? Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24)) : null;

@@ -4,8 +4,10 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import BackendWakeUpIndicator from './components/BackendWakeUpIndicator';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load all pages for better code splitting
+// Use explicit default import to ensure proper module resolution
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -86,7 +88,16 @@ function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <DashboardPage key="dashboard" />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/habits" element={<ProtectedRoute><HabitsPage /></ProtectedRoute>} />
         <Route path="/streaks" element={<ProtectedRoute><StreaksPage /></ProtectedRoute>} />
         <Route path="/levels" element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
@@ -94,7 +105,16 @@ function AppRoutes() {
         <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/habit-tracking" element={<ProtectedRoute><HabitTrackingPage /></ProtectedRoute>} />
+        <Route 
+          path="/habit-tracking" 
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <HabitTrackingPage key="habit-tracking" />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </Suspense>
   );
@@ -102,37 +122,39 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppRoutes />
-        <BackendWakeUpIndicator />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#1f2937',
-              color: '#fff',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              borderRadius: '12px',
-              padding: '16px',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+          <BackendWakeUpIndicator />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#1f2937',
+                color: '#fff',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '12px',
+                padding: '16px',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
-      </AuthProvider>
-    </Router>
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

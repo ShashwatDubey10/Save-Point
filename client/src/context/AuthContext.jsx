@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { authService } from '../services/authService';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     setError(null);
     try {
       const data = await authService.register(userData);
@@ -50,14 +50,12 @@ export const AuthProvider = ({ children }) => {
       setError(message);
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     setError(null);
     try {
-      console.log('Attempting login with:', { email: credentials.email });
       const data = await authService.login(credentials);
-      console.log('Login successful, user:', data.user);
       setUser(data.user);
       return { success: true };
     } catch (err) {
@@ -66,17 +64,17 @@ export const AuthProvider = ({ children }) => {
       setError(message);
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout();
     } finally {
       setUser(null);
     }
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const data = await authService.getMe();
       setUser(data.user);
@@ -85,9 +83,14 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to refresh user:', err);
     }
-  };
+  }, []);
 
-  const value = {
+  const setErrorHandler = useCallback((err) => {
+    setError(err);
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     loading,
     error,
@@ -96,8 +99,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     refreshUser,
-    setError,
-  };
+    setError: setErrorHandler,
+  }), [user, loading, error, register, login, logout, refreshUser, setErrorHandler]);
 
   return (
     <AuthContext.Provider value={value}>

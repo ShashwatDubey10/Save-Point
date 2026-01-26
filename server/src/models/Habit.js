@@ -125,23 +125,25 @@ habitSchema.pre('save', function(next) {
 });
 
 // Method to check if habit was completed today
+// Uses date string comparison to handle timezone differences correctly
 habitSchema.methods.isCompletedToday = function() {
   if (this.completions.length === 0) return false;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Get today's date string using UTC (since dates are stored as UTC midnight)
+  const today = normaliseToLocalDate(new Date());
+  const todayString = getDateString(today);
 
   const lastCompletion = this.completions[this.completions.length - 1].date;
-  const lastCompletionDate = new Date(lastCompletion);
-  lastCompletionDate.setHours(0, 0, 0, 0);
+  const lastCompletionString = getDateString(lastCompletion);
 
-  return lastCompletionDate.getTime() === today.getTime();
+  return lastCompletionString === todayString;
 };
 
 // Method to complete habit
 habitSchema.methods.complete = function(note = '', mood = null) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Normalize today's date to UTC midnight to preserve calendar date when stored
+  // This ensures consistent date handling regardless of server timezone
+  const today = normaliseToLocalDate(new Date());
 
   // Check if already completed today
   if (this.isCompletedToday()) {
