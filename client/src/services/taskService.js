@@ -1,9 +1,12 @@
 import api from './api';
+import apiCache from '../utils/apiCache';
 
 export const taskService = {
   // Create a new task
   async create(taskData) {
     const response = await api.post('/tasks', taskData);
+    // Invalidate tasks cache
+    apiCache.invalidate('/tasks');
     return response.data.data;
   },
 
@@ -30,24 +33,32 @@ export const taskService = {
   // Update a task
   async update(id, updates) {
     const response = await api.put(`/tasks/${id}`, updates);
+    // Invalidate tasks cache
+    apiCache.invalidate('/tasks');
     return response.data.data;
   },
 
   // Delete a task
   async delete(id) {
     const response = await api.delete(`/tasks/${id}`);
+    // Invalidate tasks cache
+    apiCache.invalidate('/tasks');
     return response.data;
   },
 
   // Toggle task completion status
   async toggleStatus(id) {
     const response = await api.post(`/tasks/${id}/toggle`);
+    // Invalidate tasks cache
+    apiCache.invalidate('/tasks');
     return response.data; // Return full response including points data
   },
 
   // Update task status directly
   async updateStatus(id, status) {
     const response = await api.put(`/tasks/${id}`, { status });
+    // Invalidate tasks cache
+    apiCache.invalidate('/tasks');
     return response.data; // Return full response including points data
   },
 

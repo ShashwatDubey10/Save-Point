@@ -33,6 +33,8 @@ const AppHeader = () => {
                 src="/SavePointLogoHeader.png"
                 alt="Save Point"
                 className="h-8 sm:h-10 lg:h-12 w-auto"
+                loading="eager"
+                fetchpriority="high"
               />
             </Link>
 

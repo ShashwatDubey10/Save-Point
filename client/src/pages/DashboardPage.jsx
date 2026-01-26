@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
@@ -31,7 +31,7 @@ const DashboardPage = () => {
     fetchDashboardData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       // Fetch habits, tasks, and weekly summary
       const [habitsResponse, tasksResponse, weeklyResponse] = await Promise.all([
@@ -53,9 +53,9 @@ const DashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchHabits = async () => {
+  const fetchHabits = useCallback(async () => {
     try {
       const data = await habitService.getAll();
       setHabits(data.data || []);
@@ -63,10 +63,10 @@ const DashboardPage = () => {
       setError('Failed to load habits');
       console.error(err);
     }
-  };
+  }, []);
 
   // Check if habit is completed today (same as HabitsPage)
-  const isCompletedToday = (habit) => {
+  const isCompletedToday = useCallback((habit) => {
     if (!habit || !habit.completions || habit.completions.length === 0) {
       return false;
     }
@@ -83,9 +83,9 @@ const DashboardPage = () => {
     lastCompletion.setHours(0, 0, 0, 0);
 
     return lastCompletion.getTime() === today.getTime();
-  };
+  }, []);
 
-  const toggleHabit = async (id, completed) => {
+  const toggleHabit = useCallback(async (id, completed) => {
     // Optimistic UI update
     setHabits(prevHabits =>
       prevHabits.map(habit => {
@@ -137,10 +137,10 @@ const DashboardPage = () => {
   const handleCreateHabit = () => {
     setEditingHabit(null);
     setIsHabitModalOpen(true);
-  };
+  }, []);
 
   // Edit habit
-  const handleEditHabit = (habit, e) => {
+  const handleEditHabit = useCallback((habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking edit
     e.preventDefault(); // Prevent any default behavior
     setEditingHabit(habit);
@@ -167,17 +167,17 @@ const DashboardPage = () => {
       toast.error('Failed to save habit. Please try again.');
       throw err; // Re-throw to let the modal handle the error
     }
-  };
+  }, [fetchDashboardData]);
 
   // Delete habit
-  const handleDeleteClick = (habit, e) => {
+  const handleDeleteClick = useCallback((habit, e) => {
     e.stopPropagation(); // Prevent toggle when clicking delete
     e.preventDefault(); // Prevent any default behavior
     setHabitToDelete(habit);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!habitToDelete) return;
 
     try {
@@ -191,10 +191,10 @@ const DashboardPage = () => {
       toast.error('Failed to delete habit. Please try again.');
       setError('Failed to delete habit');
     }
-  };
+  }, [fetchDashboardData, habitToDelete]);
 
   // Reorder habits
-  const handleReorder = async (reorderedHabits) => {
+  const handleReorder = useCallback(async (reorderedHabits) => {
     // Optimistically update UI
     setHabits(reorderedHabits);
 
@@ -211,19 +211,26 @@ const DashboardPage = () => {
       // Revert on error
       await fetchHabits();
     }
-  };
+  }, [fetchHabits]);
 
+  // Memoize expensive computations
+  const completedCount = useMemo(() => 
+    habits.filter(h => isCompletedToday(h)).length,
+    [habits, isCompletedToday]
+  );
 
-
-  const completedCount = habits.filter(h => isCompletedToday(h)).length;
-  const totalXP = user?.gamification?.points || 0;
-  const level = user?.gamification?.level || 1;
-  const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
-  const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
-  const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
+  // Memoize gamification calculations
+  const { totalXP, level, xpForNextLevel, pointsInLevel, xpProgress } = useMemo(() => {
+    const totalXP = user?.gamification?.points || 0;
+    const level = user?.gamification?.level || 1;
+    const xpForNextLevel = Math.pow(level, 2) * 100 - Math.pow(level - 1, 2) * 100;
+    const pointsInLevel = totalXP - Math.pow(level - 1, 2) * 100;
+    const xpProgress = (pointsInLevel / xpForNextLevel) * 100;
+    return { totalXP, level, xpForNextLevel, pointsInLevel, xpProgress };
+  }, [user?.gamification?.points, user?.gamification?.level]);
 
   // Helper to get YYYY-MM-DD string from a date (consistent with HabitTrackingPage)
-  const getDateString = (date, useUTC = false) => {
+  const getDateString = useCallback((date, useUTC = false) => {
     if (useUTC) {
       const year = date.getUTCFullYear();
       const month = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -235,10 +242,10 @@ const DashboardPage = () => {
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
-  };
+  }, []);
 
   // Check if habit is completed for a specific date
-  const isCompletedForDate = (habit, date) => {
+  const isCompletedForDate = useCallback((habit, date) => {
     const targetDateString = getDateString(date);
 
     // Check if habit was created after this date
@@ -304,32 +311,50 @@ const DashboardPage = () => {
     }
 
     return weekProgress;
-  };
+  }, [habits, isCompletedForDate]);
 
   // Get weekly progress from analytics data or calculate from habits
-  let weekProgress = [0, 0, 0, 0, 0, 0, 0];
+  const weekProgress = useMemo(() => {
+    let progress = [0, 0, 0, 0, 0, 0, 0];
 
-  if (weeklyData?.habits?.dailyBreakdown && weeklyData.habits.dailyBreakdown.length === 7) {
-    // Use API data if available and properly formatted
-    // Backend returns Sunday-Saturday, but we need Monday-Sunday
-    // So we need to reorder: take last day (Sun) and put it first, then Mon-Sat
-    const apiData = weeklyData.habits.dailyBreakdown;
-    const reorderedData = [
-      ...apiData.slice(1), // Mon-Sat
-      apiData[0]           // Sun (moved to end)
-    ];
-    weekProgress = reorderedData.map(day => day.completionRate || 0);
-  } else {
-    // Fallback: calculate from habits directly
-    weekProgress = calculateWeeklyProgress();
-  }
+    if (weeklyData?.habits?.dailyBreakdown && weeklyData.habits.dailyBreakdown.length === 7) {
+      // Use API data if available and properly formatted
+      // Backend returns Sunday-Saturday, but we need Monday-Sunday
+      // So we need to reorder: take last day (Sun) and put it first, then Mon-Sat
+      const apiData = weeklyData.habits.dailyBreakdown;
+      const reorderedData = [
+        ...apiData.slice(1), // Mon-Sat
+        apiData[0]           // Sun (moved to end)
+      ];
+      progress = reorderedData.map(day => day.completionRate || 0);
+    } else {
+      // Fallback: calculate from habits directly
+      progress = calculateWeeklyProgress();
+    }
+    return progress;
+  }, [weeklyData, calculateWeeklyProgress]);
 
-  const getGreeting = () => {
+  const getGreeting = useCallback(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
-  };
+  }, []);
+
+  // Memoize sorted tasks
+  const sortedTasks = useMemo(() => {
+    return tasks
+      .sort((a, b) => {
+        // Sort by due date (earliest first)
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate) - new Date(b.dueDate);
+        }
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return 0;
+      })
+      .slice(0, 6);
+  }, [tasks]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -615,18 +640,7 @@ const DashboardPage = () => {
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {tasks
-                .sort((a, b) => {
-                  // Sort by due date (earliest first)
-                  if (a.dueDate && b.dueDate) {
-                    return new Date(a.dueDate) - new Date(b.dueDate);
-                  }
-                  if (a.dueDate) return -1;
-                  if (b.dueDate) return 1;
-                  return 0;
-                })
-                .slice(0, 6)
-                .map((task) => {
+              {sortedTasks.map((task) => {
                   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                   const isOverdue = dueDate && dueDate < new Date();
                   const daysUntilDue = dueDate ? Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24)) : null;

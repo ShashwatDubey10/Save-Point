@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiCache from '../utils/apiCache';
 
 // Use environment variable for API URL in production, fallback to proxy in development
 const baseURL = import.meta.env.VITE_API_URL
@@ -12,6 +13,11 @@ const api = axios.create({
   },
   timeout: 30000, // 30 second timeout
 });
+
+// Methods that should be cached (GET requests only)
+const CACHEABLE_METHODS = ['get'];
+// Endpoints that should not be cached (always fresh)
+const NO_CACHE_ENDPOINTS = ['/auth/me', '/analytics/dashboard', '/analytics/weekly'];
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -78,32 +84,66 @@ const retryRequest = async (error) => {
   return api(config);
 };
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token and check cache
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Check cache for GET requests
+    if (CACHEABLE_METHODS.includes(config.method?.toLowerCase()) && !NO_CACHE_ENDPOINTS.some(endpoint => config.url?.includes(endpoint))) {
+      const cached = apiCache.get(config.url, config.params);
+      if (cached) {
+        // Return cached response as a rejected promise to short-circuit the request
+        // Axios will treat this as a successful response
+        return Promise.reject({
+          __cached: true,
+          data: cached,
+          config,
+        });
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle errors and retries
+// Response interceptor - handle errors, retries, and caching
 api.interceptors.response.use(
   (response) => {
     // Dispatch event when backend responds successfully
     if (response.config.__retryCount > 0) {
       window.dispatchEvent(new CustomEvent('backend:awake'));
     }
+
+    // Cache successful GET responses
+    if (CACHEABLE_METHODS.includes(response.config.method?.toLowerCase()) && 
+        !NO_CACHE_ENDPOINTS.some(endpoint => response.config.url?.includes(endpoint))) {
+      apiCache.set(response.config.url, response.config.params, response.data);
+    }
+
     return response;
   },
   async (error) => {
+    // Handle cached responses
+    if (error.__cached) {
+      return Promise.resolve({
+        data: error.data,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: error.config,
+      });
+    }
+
     // Handle 401 Unauthorized - logout user
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      apiCache.clear(); // Clear cache on logout
       window.location.href = '/login';
       return Promise.reject(error);
     }

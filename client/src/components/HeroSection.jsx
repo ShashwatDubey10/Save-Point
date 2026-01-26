@@ -79,6 +79,8 @@ const HeroSection = () => {
             src="/SavePointLogo.png"
             alt="Save Point"
             className="h-32 sm:h-40 lg:h-48 mx-auto drop-shadow-2xl"
+            loading="eager"
+            fetchpriority="high"
           />
         </div>
 
