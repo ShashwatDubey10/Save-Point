@@ -13,7 +13,6 @@ const RegisterPage = () => {
     confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
 
@@ -223,29 +222,6 @@ const RegisterPage = () => {
                   disabled={loading}
                 />
               </div>
-            </div>
-
-            {/* Terms Checkbox */}
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 bg-white/5 border-white/20 rounded text-primary-600 focus:ring-primary-500 focus:ring-offset-0"
-                required
-                disabled={loading}
-              />
-              <label htmlFor="terms" className="text-sm text-gray-400">
-                I agree to the{' '}
-                <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">
-                  Privacy Policy
-                </a>
-              </label>
             </div>
 
             {/* Submit Button */}
